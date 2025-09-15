@@ -1,263 +1,249 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
 <meta charset="utf-8">
-<title>GOLDEN MILLION — Get in now, be remembered beside legends.</title>
+<title>ДОШКА №1 ОГОЛОШЕНЬ • Україна — 199 грн/міс за слот</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root{ --bg:#fff; --ink:#111; --muted:#6b7280; --outline:#cfd6e3; --overlay:rgba(0,0,0,.5); --hover:rgba(0,0,0,.08); }
+  :root{
+    --bg:#fff; --ink:#111; --muted:#6b7280; --line:#e7ebf2; --outline:#cfd6e3;
+    --overlay:rgba(0,0,0,.5); --hover:rgba(0,0,0,.08); --primary:#111;
+  }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  header{position:fixed;inset:0 0 auto 0;z-index:20;display:flex;justify-content:center;padding:8px 12px;pointer-events:none}
-  .cta{pointer-events:auto;display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.96);border:1px solid #e7ebf2;border-radius:999px;padding:8px 14px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
-  .dot{width:10px;height:10px;border-radius:50%;background:radial-gradient(#ffd24d,#e1b526)}
-  .cta b{font-weight:800}.cta span{color:var(--muted)}
+  header{position:fixed;inset:0 0 auto 0;z-index:20;display:flex;justify-content:center;pointer-events:none}
+  .bar{pointer-events:auto;display:flex;align-items:center;gap:12px;margin:10px auto;padding:8px 14px;border:1px solid var(--line);background:rgba(255,255,255,.96);border-radius:999px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+  .badge{font-weight:800}
+  .muted{color:var(--muted)}
+  .visits{position:fixed;right:10px;top:10px;z-index:25;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:10px;padding:6px 10px;box-shadow:0 4px 18px rgba(0,0,0,.08)}
+  .visits b{font-variant-numeric:tabular-nums}
   #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-  canvas{display:block; max-width:100vw; max-height:100vh; width:100%; height:100%; cursor:default}
+  canvas{display:block;max-width:100vw;max-height:100vh;width:100%;height:100%}
 
   /* Modals */
   .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:50}
   .overlay.on{display:flex}
-  .card{width:min(720px,92vw);background:#fff;border:1px solid #e7ebf2;border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:16px;animation:pop .22s ease-out both}
+  .card{width:min(760px,92vw);background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:16px;animation:pop .22s ease-out both}
   @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
   .title{margin:0 0 6px 0;font-weight:800}
   .sub{margin:0 0 12px 0;color:var(--muted)}
   .row{display:flex;gap:12px;flex-wrap:wrap}
   .col{flex:1 1 280px}
   .drop{min-height:160px;border:1px dashed #cfd3da;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#666;background:#fafafa;cursor:pointer}
-  .thumb{max-width:100%;max-height:340px;border-radius:12px;border:1px solid #e7ebf2;display:block}
-  .input{width:100%;padding:10px 12px;border:1px solid #e7ebf2;border-radius:10px}
+  .thumb{max-width:100%;max-height:340px;border-radius:12px;border:1px solid var(--line);display:block}
+  .input,.phone{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
   .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-  .btn{appearance:none;border:1px solid #e7ebf2;background:#fff;color:#111;padding:8px 12px;border-radius:10px;cursor:pointer}
-  .btn.primary{border-color:#111;background:#111;color:#fff}
-  .zoomHint{position:fixed;right:10px;bottom:10px;background:rgba(255,255,255,.9);border:1px solid #e7ebf2;border-radius:10px;padding:6px 8px;color:#555}
+  .btn{appearance:none;border:1px solid var(--line);background:#fff;color:#111;padding:8px 12px;border-radius:10px;cursor:pointer}
+  .btn.primary{border-color:var(--primary);background:var(--primary);color:#fff}
+  .price{font-weight:700}
+  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .nav .arrow{cursor:pointer;font-size:18px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .views{font-size:13px;color:#444}
 </style>
 </head>
 <body>
 <header>
-  <div class="cta"><div class="dot"></div><b>GOLDEN MILLION</b><span>Get in now — be remembered beside legends.</span></div>
+  <div class="bar">
+    <span class="badge">ДОШКА №1 ОГОЛОШЕНЬ • Україна</span>
+    <span class="muted">Купуй свій слот за <b>199 грн/міс</b>. Додай фото, опис і телефон — і тебе побачать!</span>
+  </div>
 </header>
+<div class="visits">Відвідувачі: <b id="visCounter">10369</b></div>
 
 <div id="stage"><canvas id="wall"></canvas></div>
-<div class="zoomHint">Zoom: mouse wheel or <b>+</b>/<b>−</b></div>
 
-<!-- VIEW -->
+<!-- Перегляд оголошення -->
 <div class="overlay" id="viewOverlay">
   <div class="card">
-    <h3 class="title" id="viewTitle">Legend</h3>
-    <p class="sub" id="viewSub">“A short line for history.”</p>
-    <img id="viewImg" class="thumb" alt="">
-    <div class="actions"><button class="btn" id="viewClose">Close</button></div>
+    <h3 class="title" id="vTitle">Оголошення</h3>
+    <p class="sub" id="vSub"></p>
+    <img id="vImg" class="thumb" alt="">
+    <p class="views">👁 Переглядів: <b id="vViews">0</b> &nbsp;•&nbsp; 📞 <span id="vPhone"></span></p>
+    <div class="nav">
+      <button class="arrow" id="prevAd">◀ Попереднє</button>
+      <button class="arrow" id="nextAd">Наступне ▶</button>
+    </div>
+    <div class="actions"><button class="btn" id="vClose">Закрити</button></div>
   </div>
 </div>
 
-<!-- ADD -->
+<!-- Додавання оголошення -->
 <div class="overlay" id="addOverlay">
   <div class="card">
-    <h3 class="title">Claim your golden spot — $1 / year (test mode)</h3>
-    <p class="sub">Add your image and a short line about yourself. Saved locally in your browser for now.</p>
+    <h3 class="title">Придбати слот — <span class="price">199 грн/міс</span> (демо, без оплати)</h3>
+    <p class="sub">Обраний прямокутник стане вашим оголошенням. Додайте фото, короткий опис і номер телефону.</p>
     <div class="row">
       <div class="col">
-        <div class="drop" id="drop"><input type="file" id="file" accept="image/*" style="display:none"><span id="dropText">Drop an image here (or click)</span></div>
+        <div class="drop" id="drop">
+          <input type="file" id="file" accept="image/*" style="display:none">
+          <span id="dropText">Перетягніть фото сюди або натисніть</span>
+        </div>
         <img id="preview" class="thumb" alt="" style="display:none;margin-top:8px">
       </div>
       <div class="col">
-        <label class="sub" for="desc">Your short line (max 80 chars)</label>
-        <input class="input" id="desc" maxlength="80" placeholder="I was here. 2025.">
+        <input class="input" id="title" maxlength="60" placeholder="Заголовок (наприклад: iPhone 12, 128 ГБ)">
+        <textarea class="input" id="desc" maxlength="160" rows="5" placeholder="Короткий опис (до 160 символів)"></textarea>
+        <input class="phone" id="phone" maxlength="20" placeholder="+380 XX XXX XX XX">
+        <p class="sub">* Обмеження від спаму: не більше <b>4</b> сусідніх слотів, куплених одним користувачем.</p>
       </div>
     </div>
-    <div class="actions"><button class="btn" id="addCancel">Cancel</button><button class="btn primary" id="addSave">Save (test)</button></div>
+    <div class="actions"><button class="btn" id="aCancel">Скасувати</button><button class="btn primary" id="aSave">Зберегти (демо)</button></div>
   </div>
 </div>
 
 <script>
-/* ========================= CONFIG ========================= */
+/* ================== БАЗОВІ НАЛАШТУВАННЯ ================== */
 const CAN = document.getElementById('wall');
 const CTX = CAN.getContext('2d', {alpha:false});
 let DPR = Math.max(1, window.devicePixelRatio || 1);
 
-const WORLD = { cells:1000, size:1000 }; // логическая «стена»: 1000×1000 (1,000,000 мест)
-const TILE_COUNT = 3000;                 // мозаика разных размеров
-const LEGENDS_COUNT = 100;               // топ-100 под легенды
-const LS_KEY = 'gm_canvas_claims_v2';
+/* «Стіна»: логічний квадрат 1000×1000 (мільйон місць).
+   Ми вкриваємо її 2000 горизонтальними прямокутниками-слотами. */
+const WORLD = { size: 1000 };
+const SLOTS = 2000;
+const PREFILL = 300;               // заповнюємо 300 фейкових
+const PRICE_UA = 199;              // грн/міс
+const LS_CLAIMS = 'ua_board_claims_v1';
+const LS_VIS = 'ua_board_visitors_v1';
+const OWNER_KEY = 'ua_board_owner_id';
+/* Власник (анонімний ID у цьому браузері) */
+let OWNER_ID = localStorage.getItem(OWNER_KEY);
+if (!OWNER_ID){ OWNER_ID = 'u'+Math.random().toString(36).slice(2); localStorage.setItem(OWNER_KEY, OWNER_ID); }
 
-/* =================== RNG & GEOMETRY =================== */
-let SEED = 987654321>>>0;
+/* ================== УТИЛІТИ ТА RNG ================== */
+let SEED = 424242>>>0;
 function srand(){ SEED = (SEED*1664525 + 1013904223)>>>0; return SEED/4294967296; }
 function rint(a,b){ return Math.floor(a + srand()*(b-a+1)); }
 const rect = (x,y,w,h)=>({id:0,x,y,w,h,area:w*h});
-function splitOne(r){
-  const horiz = r.w >= r.h;
-  if (horiz){
-    const min = Math.max(20, Math.floor(r.w*0.33));
-    const max = Math.min(r.w-20, Math.floor(r.w*0.67));
-    if (max<=min) return [r];
-    const cut = rint(min,max);
-    return [ rect(r.x, r.y, cut, r.h), rect(r.x+cut, r.y, r.w-cut, r.h) ];
-  } else {
-    const min = Math.max(20, Math.floor(r.h*0.33));
-    const max = Math.min(r.h-20, Math.floor(r.h*0.67));
-    if (max<=min) return [r];
-    const cut = rint(min,max);
-    return [ rect(r.x, r.y, r.w, cut), rect(r.x, r.y+cut, r.w, r.h-cut) ];
-  }
-}
-function buildMosaic(target){
-  const list = [ rect(0,0, WORLD.size, WORLD.size) ];
-  while(list.length < target){
-    let idx=-1, best=-1;
-    for(let i=0;i<list.length;i++){
-      const r=list[i]; if (r.w>40 && r.h>40 && r.area>best){ best=r.area; idx=i; }
+function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+
+/* ================== ГЕНЕРАЦІЯ ГОРИЗОНТАЛЬНОЇ МОЗАЇКИ ==================
+   Робимо рядки змінної висоти (18..45), кожен рядок ріжемо на
+   плитки змінної ширини (30..140) так, аби кожна була ширша за висоту. */
+function buildHorizontalMosaic(target){
+  const L = [];
+  let y = 0;
+  while (y < WORLD.size){
+    const rowH = clamp(rint(18,45), 18, WORLD.size-y);
+    let x = 0;
+    while (x < WORLD.size){
+      const maxW = Math.min(WORLD.size-x, rint(40,140));
+      const minW = Math.max(rowH*1.2|0, 30);
+      const w = clamp(rint(minW, Math.max(minW, maxW)), minW, WORLD.size-x);
+      L.push(rect(x,y,w,rowH));
+      x += w;
     }
+    y += rowH;
+  }
+  // Якщо слотів менше ніж треба — ділимо довгі плитки навпіл по вертикалі.
+  while (L.length < target){
+    let idx = L.findIndex(r=>r.w>70);
     if (idx===-1) break;
-    const r=list.splice(idx,1)[0];
-    const [a,b]=splitOne(r);
-    if (b){ a.area=a.w*a.h; b.area=b.w*b.h; list.push(a,b); } else list.push(r);
+    const r = L.splice(idx,1)[0];
+    const cut = Math.max(30, Math.floor(r.w/2));
+    L.push(rect(r.x,r.y,cut,r.h), rect(r.x+cut,r.y,r.w-cut,r.h));
   }
-  for(let k=0;k<list.length;k++){
-    const r=list[k], asp=r.w/r.h;
-    if (asp>3 || asp<0.33){ const p=splitOne(r); if (p.length===2){ list.splice(k,1,p[0],p[1]); k--; } }
-  }
-  while(list.length>target) list.pop();
-  list.forEach((r,i)=> r.id=i);
-  return list;
+  // Якщо більше — обрізаємо «хвіст».
+  L.length = Math.min(L.length, target);
+  L.forEach((r,i)=>{ r.id=i; r.area=r.w*r.h; });
+  return L;
 }
-let tiles = buildMosaic(TILE_COUNT);
+let layout = buildHorizontalMosaic(SLOTS);
 
-/* =================== LEGENDS (images + desc) =================== */
-const LEGEND_PHOTOS = {
-  "Napoleon Bonaparte":"https://upload.wikimedia.org/wikipedia/commons/5/50/Napoleon_Bonaparte_by_Jean-Auguste-Dominique_Ingres%2C_1806.jpg",
-  "Donald Trump":"https://upload.wikimedia.org/wikipedia/commons/5/56/Donald_Trump_official_portrait.jpg",
-  "Volodymyr Zelenskyy":"https://upload.wikimedia.org/wikipedia/commons/2/2e/Volodymyr_Zelensky_Official_portrait.jpg",
-  "Joe Biden":"https://upload.wikimedia.org/wikipedia/commons/6/68/Joe_Biden_presidential_portrait.jpg",
-  "Elon Musk":"https://upload.wikimedia.org/wikipedia/commons/4/49/Elon_Musk_2015.jpg",
-  "George Washington":"https://upload.wikimedia.org/wikipedia/commons/6/6f/George_Washington_by_Gilbert_Stuart%2C_1797.jpg",
-  "Abraham Lincoln":"https://upload.wikimedia.org/wikipedia/commons/a/a3/Abraham_Lincoln_O-77_matte_collodion_print.jpg",
-  "Winston Churchill":"https://upload.wikimedia.org/wikipedia/commons/1/1e/Churchill_portrait_NYP_45063.jpg",
-  "Martin Luther King Jr.":"https://upload.wikimedia.org/wikipedia/commons/1/1e/Martin_Luther_King_Jr_NYWTS_3.jpg",
-  "Leonardo da Vinci":"https://upload.wikimedia.org/wikipedia/commons/6/6d/Leonardo_self.jpg",
-  "Marie Curie":"https://upload.wikimedia.org/wikipedia/commons/7/7e/Marie_Curie_c1920.jpg",
-  "Albert Einstein":"https://upload.wikimedia.org/wikipedia/commons/d/d3/Albert_Einstein_Head.jpg",
-  "Nikola Tesla":"https://upload.wikimedia.org/wikipedia/commons/d/d4/N.Tesla.JPG",
-  "Angela Merkel":"https://upload.wikimedia.org/wikipedia/commons/9/90/Angela_Merkel_Juli_2010_-_3zu4.jpg",
-  "Barack Obama":"https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg",
-  "Steve Jobs":"https://upload.wikimedia.org/wikipedia/commons/8/80/Steve_Jobs_Headshot_2010-CROP2.jpg",
-  "Bill Gates":"https://upload.wikimedia.org/wikipedia/commons/a/a0/Bill_Gates_2018.jpg",
-  "Jeff Bezos":"https://upload.wikimedia.org/wikipedia/commons/3/35/Jeff_Bezos_cropped.jpg"
-};
-const LEGEND_DESC = {
-  "Napoleon Bonaparte":"French statesman and military leader.",
-  "Donald Trump":"45th President of the United States.",
-  "Volodymyr Zelenskyy":"President of Ukraine.",
-  "Joe Biden":"46th President of the United States.",
-  "Elon Musk":"Entrepreneur and engineer.",
-  "George Washington":"1st U.S. President.",
-  "Abraham Lincoln":"16th U.S. President.",
-  "Winston Churchill":"UK Prime Minister during WWII.",
-  "Martin Luther King Jr.":"Civil rights leader.",
-  "Leonardo da Vinci":"Renaissance polymath.",
-  "Marie Curie":"Pioneer in radioactivity.",
-  "Albert Einstein":"Theoretical physicist.",
-  "Nikola Tesla":"Inventor and electrical engineer.",
-  "Angela Merkel":"Chancellor of Germany (2005–2021).",
-  "Barack Obama":"44th U.S. President.",
-  "Steve Jobs":"Apple co-founder.",
-  "Bill Gates":"Microsoft co-founder.",
-  "Jeff Bezos":"Amazon founder."
-};
-const LEGEND_NAMES = Object.keys(LEGEND_PHOTOS).concat([
-  "Nelson Mandela","Julius Caesar","Pablo Picasso","Vincent van Gogh","Michelangelo",
-  "Ada Lovelace","Alan Turing","Grace Hopper","Katherine Johnson","Hedy Lamarr",
-  "Charles Darwin","Carl Sagan","Johannes Kepler","Niels Bohr","William Shakespeare",
-  "Homer","Dante Alighieri","Johann Sebastian Bach","Ludwig van Beethoven","Wolfgang Amadeus Mozart",
-  "Leo Tolstoy","Fyodor Dostoevsky","Ernest Hemingway","Agatha Christie","Serena Williams",
-  "Michael Jordan","Kobe Bryant","Lionel Messi","Cristiano Ronaldo","Pelé",
-  "Usain Bolt","Bruce Lee","Jackie Chan","Hayao Miyazaki","Akira Kurosawa",
-  "Steven Spielberg","George Lucas","Quentin Tarantino","James Cameron","Mother Teresa",
-  "Florence Nightingale","Yuri Gagarin","Neil Armstrong","Jane Goodall","Socrates",
-  "Plato","Aristotle","Confucius","Sun Tzu","Genghis Khan",
-  "Alexander the Great","Queen Elizabeth II","Joan of Arc","Catherine the Great","Sheryl Sandberg",
-  "Satya Nadella","Sundar Pichai","Tim Cook","Susan Wojcicki","Desmond Tutu",
-  "Lech Wałęsa","Václav Havel","J.R.R. Tolkien","George R. R. Martin","J.K. Rowling",
-  "Haruki Murakami","Gabriel García Márquez","Oprah Winfrey","Greta Thunberg","Galileo Galilei"
-]).slice(0,LEGENDS_COUNT);
-
-/* =================== STORAGE =================== */
-let claims = {};
-try{ claims = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }catch(e){ claims = {}; }
-function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){ alert("Storage quota exceeded. Try a smaller image."); }}
-
-/* =================== PREFILL LEGENDS =================== */
-(function prefill(){
-  const have = Object.values(claims).filter(v=>v && v.legend).length;
-  if (have >= LEGENDS_COUNT) return;
-  const sorted = [...tiles].sort((a,b)=>b.area-a.area).slice(0,LEGENDS_COUNT);
-  sorted.forEach((t,i)=>{
-    const name = LEGEND_NAMES[i] || "Legend";
-    const url  = LEGEND_PHOTOS[name];
-    claims[t.id] = {
-      img: url || initialsAvatar(name, Math.max(300, t.w), Math.max(300, t.h)),
-      name,
-      desc: LEGEND_DESC[name] || "Legend.",
-      legend: true
-    };
-  });
-  persist();
+/* Побудова таблиці сусідства (по спільній стороні) для анти-спаму */
+const adj = new Map();
+(function buildAdj(){
+  for (const r of layout) adj.set(r.id, []);
+  const byRow = [...layout].sort((a,b)=>a.y-b.y);
+  for (let i=0;i<byRow.length;i++){
+    const a = byRow[i];
+    for (let j=i+1;j<byRow.length;j++){
+      const b = byRow[j];
+      if (b.y > a.y + a.h + 1) break; // далі немає вертикального контакту
+      // спільна горизонтальна межа?
+      const shareH = (Math.abs((a.y+a.h) - b.y) <= 1) || (Math.abs((b.y+b.h) - a.y) <= 1);
+      const overlapX = Math.max(0, Math.min(a.x+a.w, b.x+b.w) - Math.max(a.x, b.x));
+      if (shareH && overlapX > 0){
+        adj.get(a.id).push(b.id); adj.get(b.id).push(a.id);
+      }
+      // спільна вертикальна межа?
+      const shareV = (Math.abs((a.x+a.w) - b.x) <= 1) || (Math.abs((b.x+b.w) - a.x) <= 1);
+      const overlapY = Math.max(0, Math.min(a.y+a.h, b.y+b.h) - Math.max(a.y, b.y));
+      if (shareV && overlapY > 0){
+        adj.get(a.id).push(b.id); adj.get(b.id).push(a.id);
+      }
+    }
+  }
 })();
 
-/* =================== CANVAS RENDER =================== */
+/* ================== ДАНІ ТА ЗБЕРЕЖЕННЯ ================== */
+let claims = {};
+try{ claims = JSON.parse(localStorage.getItem(LS_CLAIMS) || "{}"); }catch(_){ claims = {}; }
+function saveClaims(){ try{ localStorage.setItem(LS_CLAIMS, JSON.stringify(claims)); }catch(e){ alert('Переповнено сховище. Спробуйте менше фото.'); }}
+
+/* ================== ПЕРЕДЗАПОВНЕНІ 300 ОГОЛОШЕНЬ ================== */
+const NAMES = ["iPhone 12","Диван кутовий","Ноутбук Lenovo","Велосипед Trek","Кавоварка DeLonghi","Смарт-годинник","Комод IKEA","Столик журнальний","Крісло офісне","Телевізор Samsung","Шини зимові","Пральна машина","Холодильник","PlayStation 5","Квартира 1к, Львів","Квартира 2к, Київ","Будинок під Києвом","Оренда гаража","Оренда офісу","Автомобіль Skoda","Автомобіль BMW","Електросамокат","Електроскутер","Гітара Fender","Піаніно","Дитяча коляска","Ліжко двоспальне","Матрац ортопедичний","Смартфон Samsung","Навушники AirPods","Монітор 27\"","Відеокарта RTX","Квадрокоптер","Фен Dyson","Фотоапарат Canon","Обігрівач","Кондиціонер","Бойлер","Газонокосарка","Снігоприбирач","Посудомийка","Садові меблі","Батут дитячий","Деревʼяний будинок","Плитка керамічна","Ламінат","Двері вхідні","Вікна металопластикові","Сервіс вантажів","Ремонт техніки","Ремонт квартир","Клінінг","Доставка води","Репетитор англійської","Няня","Фотограф","Відеограф","SMM послуги","Розробка сайтів","SEO","Маркетолог","Копірайтер","Уроки гри на гітарі"];
+function randPhone(){ const p = '0'+rint(50,99)+' '+rint(100,999)+' '+rint(10,99)+' '+rint(10,99); return '+380 '+p; }
+function prefillFake(){
+  // якщо вже є ≥300 — пропускаємо
+  const had = Object.values(claims).filter(x=>x && x.demo).length;
+  if (had >= PREFILL) return;
+  // Вибираємо 300 найбільших слотів для видимості
+  const slots = [...layout].sort((a,b)=>b.area-a.area).slice(0, PREFILL);
+  slots.forEach((r,i)=>{
+    const name = NAMES[i % NAMES.length] + (i%7===0 ? ' • як новий' : '');
+    const desc = (['Стан: відмінний.','Гарантія 6 міс.','Можлива доставка Новою Поштою.','Самовивіз сьогодні.','Торг доречний.','Без посередників.'])[i%6];
+    const phone = randPhone();
+    const url = `https://picsum.photos/seed/ua${r.id}/800/500`;
+    claims[r.id] = { img:url, title:name, desc, phone, views:rint(1000,90000), owner:'demo', demo:true };
+  });
+  saveClaims();
+}
+prefillFake();
+
+/* ============== ВІДВІДУВАЧІ (правий верхній кут) ============== */
+const visEl = document.getElementById('visCounter');
+let visitors = Number(localStorage.getItem(LS_VIS) || 10369);
+visEl.textContent = visitors.toLocaleString('uk-UA');
+function tickVisitors(){
+  const add = [1,1,2,2,3,4][rint(0,5)];
+  visitors += add;
+  visEl.textContent = visitors.toLocaleString('uk-UA');
+  localStorage.setItem(LS_VIS, String(visitors));
+  setTimeout(tickVisitors, rint(900,2200));
+}
+setTimeout(tickVisitors, 1200);
+
+/* Інколи збільшуємо перегляди випадковим уже існуючим оголошенням */
+setInterval(()=>{
+  const ids = Object.keys(claims);
+  if (!ids.length) return;
+  const id = ids[rint(0,ids.length-1)];
+  if (claims[id]){ claims[id].views = (claims[id].views||0)+1; saveClaims(); draw(); }
+}, 2500);
+
+/* ================== РЕНДЕР КАНВАС ================== */
 let W=0,H=0,SCALE=1, hoverId=null;
 function resize(){
   const vw = Math.max(360, window.innerWidth);
   const vh = Math.max(360, window.innerHeight);
   W = Math.floor(vw*DPR); H = Math.floor(vh*DPR);
-  CAN.width = W; CAN.height = H;
-  CAN.style.width = vw+'px'; CAN.style.height = vh+'px';
+  CAN.width = W; CAN.height = H; CAN.style.width = vw+'px'; CAN.style.height = vh+'px';
   fitToView(); draw();
 }
+function fitToView(){ SCALE = Math.min(W, H) / WORLD.size; }
 window.addEventListener('resize', resize);
-
-function fitToView(){
-  // вписываем всю стену, без панорамирования
-  SCALE = Math.min(W, H) / WORLD.size;
-}
-function setZoom(mult){
-  // Зум без панорамирования: просто меняем масштаб и перерисовываем
-  SCALE = Math.max(0.2, Math.min(3, SCALE*mult));
-  draw();
-}
 
 const imgCache = new Map();
 function loadImg(src){
   if (imgCache.has(src)) return imgCache.get(src);
-  const p = new Promise((res,rej)=>{
-    const im = new Image();
-    im.crossOrigin = "anonymous";
-    im.referrerPolicy = "no-referrer";
-    im.onload = ()=>res(im);
-    im.onerror = ()=>rej(new Error('img-load-fail'));
-    im.src = src;
-  });
+  const p = new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.referrerPolicy='no-referrer'; im.onload=()=>res(im); im.onerror=rej; im.src=src; });
   imgCache.set(src,p); return p;
 }
 
-function initialsAvatar(name,w,h){
-  const init = name.split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
-  <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
-    <stop offset='0%' stop-color='#fff2b2'/><stop offset='100%' stop-color='#e4c45e'/>
-  </linearGradient></defs>
-  <rect width='100%' height='100%' fill='url(#g)'/>
-  <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
-        font-family='system-ui,Arial' font-size='${Math.floor(Math.min(w,h)*0.35)}'
-        font-weight='800' fill='#111'>${init}</text></svg>`;
-  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
-}
-
-async function drawCover(src, name, x,y,w,h){
-  // КАРТИНКА строго в границах плитки (clip)
+async function drawCover(src, x,y,w,h){
   CTX.save();
-  CTX.beginPath(); CTX.rect(x,y,w,h); CTX.clip(); // строгая обрезка
+  CTX.beginPath(); CTX.rect(x,y,w,h); CTX.clip();
   try{
     const im = await loadImg(src);
     const r = Math.max(w/im.width, h/im.height);
@@ -265,17 +251,14 @@ async function drawCover(src, name, x,y,w,h){
     const ix = x + (w - iw)/2, iy = y + (h - ih)/2;
     CTX.fillStyle="#fff"; CTX.fillRect(x,y,w,h);
     CTX.drawImage(im, ix, iy, iw, ih);
-  }catch(e){
-    // fallback — генерим аватар с инициалами
-    const av = new Image();
-    av.onload = ()=>{ CTX.drawImage(av,x,y,w,h); CTX.restore(); };
-    av.src = initialsAvatar(name||'Member', Math.max(200,w), Math.max(200,h));
-    CTX.fillStyle="#fff"; CTX.fillRect(x,y,w,h);
-    CTX.restore();
-    return;
+  }catch(_){
+    CTX.fillStyle="#f2f2f2"; CTX.fillRect(x,y,w,h);
   }
   CTX.restore();
 }
+
+let drawQueue = Promise.resolve();
+function q(p){ drawQueue = drawQueue.then(()=>p).catch(()=>{}); }
 
 function draw(){
   CTX.setTransform(1,0,0,1,0,0);
@@ -283,151 +266,190 @@ function draw(){
   const ox = (W - WORLD.size*SCALE)/2;
   const oy = (H - WORLD.size*SCALE)/2;
 
-  // границы плиток
+  // Спочатку зображення оголошень
+  for (const r of layout){
+    const x = Math.floor(ox + r.x*SCALE);
+    const y = Math.floor(oy + r.y*SCALE);
+    const w = Math.ceil(r.w*SCALE);
+    const h = Math.ceil(r.h*SCALE);
+    const ad = claims[r.id];
+    if (ad){ q(drawCover(ad.img, x,y,w,h)); }
+  }
+  // Рамки
   CTX.lineWidth = Math.max(1, 0.8*DPR);
   CTX.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--outline').trim() || '#cfd6e3';
-
-  // сначала рисунок/фото, затем границы
-  for (const t of tiles){
-    const x = Math.floor(ox + t.x*SCALE);
-    const y = Math.floor(oy + t.y*SCALE);
-    const w = Math.ceil(t.w*SCALE);
-    const h = Math.ceil(t.h*SCALE);
-    const claim = claims[t.id];
-    if (claim){ pending = pending.then(()=>drawCover(claim.img, claim.name, x,y,w,h)); }
-  }
-  // рамки
-  for (const t of tiles){
-    const x = Math.floor(ox + t.x*SCALE);
-    const y = Math.floor(oy + t.y*SCALE);
-    const w = Math.ceil(t.w*SCALE);
-    const h = Math.ceil(t.h*SCALE);
+  for (const r of layout){
+    const x = Math.floor(ox + r.x*SCALE);
+    const y = Math.floor(oy + r.y*SCALE);
+    const w = Math.ceil(r.w*SCALE);
+    const h = Math.ceil(r.h*SCALE);
     CTX.strokeRect(x+0.5,y+0.5,w-1,h-1);
   }
-  // hover-подсветка
+  // Накладки: перегляди (для заповнених)
+  CTX.font = `${12*DPR}px system-ui,Arial`; CTX.fillStyle="rgba(0,0,0,.55)"; CTX.textBaseline="middle";
+  for (const r of layout){
+    const ad = claims[r.id]; if (!ad) continue;
+    const x = Math.floor(ox + r.x*SCALE), y = Math.floor(oy + r.y*SCALE), w = Math.ceil(r.w*SCALE), h = Math.ceil(r.h*SCALE);
+    const pad = 6*DPR; const txt = `👁 ${ (ad.views||0).toLocaleString('uk-UA') }`;
+    const tw = CTX.measureText(txt).width;
+    CTX.fillStyle="rgba(255,255,255,.8)"; CTX.fillRect(x+pad,y+h-22*DPR, tw+12*DPR, 18*DPR);
+    CTX.fillStyle="#222"; CTX.fillText(txt, x+pad+6*DPR, y+h-13*DPR);
+  }
+  // Hover-підсвітка
   if (hoverId!=null){
-    const t = tiles.find(z=>z.id===hoverId);
-    if (t){
-      const x = Math.floor(ox + t.x*SCALE);
-      const y = Math.floor(oy + t.y*SCALE);
-      const w = Math.ceil(t.w*SCALE);
-      const h = Math.ceil(t.h*SCALE);
-      CTX.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--hover') || 'rgba(0,0,0,.08)';
-      CTX.fillRect(x,y,w,h);
-    }
+    const r = layout[hoverId];
+    const x = Math.floor(ox + r.x*SCALE), y = Math.floor(oy + r.y*SCALE), w = Math.ceil(r.w*SCALE), h = Math.ceil(r.h*SCALE);
+    CTX.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--hover') || 'rgba(0,0,0,.08)';
+    CTX.fillRect(x,y,w,h);
   }
 }
 
-let pending = Promise.resolve();
-
-/* =================== HIT TEST + HOVER =================== */
-function pickTile(px,py){
+/* ================== HIT-TEST, HOVER, КЛІК ================== */
+function pick(px,py){
   const rect = CAN.getBoundingClientRect();
   const sx = (px-rect.left)*DPR, sy=(py-rect.top)*DPR;
   const ox = (W - WORLD.size*SCALE)/2;
   const oy = (H - WORLD.size*SCALE)/2;
-  const wx = (sx - ox)/SCALE, wy=(sy - oy)/SCALE;
+  const wx = (sx - ox)/SCALE, wy = (sy - oy)/SCALE;
   if (wx<0||wy<0||wx>WORLD.size||wy>WORLD.size) return null;
-  for (let i=tiles.length-1;i>=0;i--){
-    const t=tiles[i];
-    if (wx>=t.x && wy>=t.y && wx<=t.x+t.w && wy<=t.y+t.h) return t;
+  for (let i=layout.length-1;i>=0;i--){
+    const r=layout[i];
+    if (wx>=r.x && wy>=r.y && wx<=r.x+r.w && wy<=r.y+r.h) return r;
   }
   return null;
 }
-
 CAN.addEventListener('mousemove', e=>{
-  const t = pickTile(e.clientX,e.clientY);
-  const id = t ? t.id : null;
-  if (id!==hoverId){ hoverId=id; draw(); }
-  CAN.style.cursor = t ? 'pointer' : 'default';
+  const r = pick(e.clientX,e.clientY);
+  hoverId = r ? r.id : null;
+  CAN.style.cursor = r ? 'pointer' : 'default';
+  draw();
 });
 CAN.addEventListener('mouseleave', ()=>{ hoverId=null; draw(); });
 
-CAN.addEventListener('click', e=>{
-  const t = pickTile(e.clientX,e.clientY); if(!t) return;
-  const claim = claims[t.id];
-  if (claim) openView(claim); else openAdd(t);
-});
-
-/* =================== ZOOM (без сдвига) =================== */
-document.getElementById('stage').addEventListener('wheel', e=>{
-  e.preventDefault();
-  const factor = e.deltaY<0 ? 1.12 : 1/1.12;
-  setZoom(factor);
-},{passive:false});
-
-window.addEventListener('keydown', e=>{
-  if (e.key==='+' || e.key==='=' ) setZoom(1.12);
-  if (e.key==='-' || e.key==='_') setZoom(1/1.12);
-});
-
-/* =================== MODALS =================== */
+/* ================== ВІДКРИВАЄМО / ДОДАЄМО ОГОЛОШЕННЯ ================== */
 const viewOverlay = document.getElementById('viewOverlay');
-const viewImg = document.getElementById('viewImg');
-const viewTitle = document.getElementById('viewTitle');
-const viewSub = document.getElementById('viewSub');
-document.getElementById('viewClose').onclick = ()=> viewOverlay.classList.remove('on');
-viewOverlay.addEventListener('click',e=>{ if(e.target===viewOverlay) viewOverlay.classList.remove('on'); });
+const vTitle = document.getElementById('vTitle');
+const vSub   = document.getElementById('vSub');
+const vImg   = document.getElementById('vImg');
+const vViews = document.getElementById('vViews');
+const vPhone = document.getElementById('vPhone');
+document.getElementById('vClose').onclick = ()=> viewOverlay.classList.remove('on');
+viewOverlay.addEventListener('click', e=>{ if(e.target===viewOverlay) viewOverlay.classList.remove('on'); });
 
-const addOverlay = document.getElementById('addOverlay');
-const addCancel  = document.getElementById('addCancel');
-const addSave    = document.getElementById('addSave');
-const drop       = document.getElementById('drop');
-const file       = document.getElementById('file');
-const preview    = document.getElementById('preview');
-const dropText   = document.getElementById('dropText');
-const desc       = document.getElementById('desc');
-let addRect = null;
-
-function openView(rec){
-  viewTitle.textContent = rec.name || "Member of the Golden Million";
-  viewSub.textContent = rec.desc || "“A short line for history.”";
-  viewImg.src = rec.img;
+let currentViewIndex = 0; // індекс у масиві filledIds
+function filledIds(){ return Object.keys(claims).map(n=>+n).sort((a,b)=>a-b); }
+function openViewByIndex(idx){
+  const ids = filledIds(); if (!ids.length) return;
+  currentViewIndex = (idx+ids.length)%ids.length;
+  const id = ids[currentViewIndex], ad = claims[id];
+  vTitle.textContent = ad.title || 'Оголошення';
+  vSub.textContent   = ad.desc  || '';
+  vImg.src           = ad.img;
+  vViews.textContent = (ad.views||0).toLocaleString('uk-UA');
+  vPhone.textContent = ad.phone || '';
   viewOverlay.classList.add('on');
+  // +1 перегляд
+  ad.views = (ad.views||0)+1; saveClaims(); draw();
 }
-function openAdd(t){
-  addRect = t;
-  preview.style.display='none'; preview.src=''; dropText.textContent='Drop an image here (or click)'; desc.value='';
+document.getElementById('prevAd').onclick = ()=> openViewByIndex(currentViewIndex-1);
+document.getElementById('nextAd').onclick = ()=> openViewByIndex(currentViewIndex+1);
+
+CAN.addEventListener('click', e=>{
+  const r = pick(e.clientX,e.clientY); if (!r) return;
+  const ad = claims[r.id];
+  if (ad){ // перегляд
+    const ids = filledIds(); currentViewIndex = Math.max(0, ids.indexOf(r.id));
+    openViewByIndex(currentViewIndex);
+  } else { // додавання
+    pendingRect = r; openAdd();
+  }
+});
+
+/* ================== АНТИ-СПАМ: не більше 4 суміжних ================== */
+function clusterSizeIfAdd(ownerId, rectId){
+  // DFS по сусідніх плитках, зайнятих цим власником (плюс поточна)
+  const stack=[rectId], seen=new Set([rectId]);
+  let size=0;
+  while (stack.length){
+    const id = stack.pop(); size++;
+    const nbrs = adj.get(id) || [];
+    for (const nb of nbrs){
+      if (seen.has(nb)) continue;
+      const claim = claims[nb];
+      if (claim && claim.owner===ownerId){ seen.add(nb); stack.push(nb); }
+    }
+  }
+  return size;
+}
+
+/* ================== МОДАЛКА ДОДАВАННЯ ================== */
+const addOverlay = document.getElementById('addOverlay');
+const aCancel = document.getElementById('aCancel');
+const aSave   = document.getElementById('aSave');
+const drop    = document.getElementById('drop');
+const file    = document.getElementById('file');
+const preview = document.getElementById('preview');
+const dropText= document.getElementById('dropText');
+const titleIn = document.getElementById('title');
+const descIn  = document.getElementById('desc');
+const phoneIn = document.getElementById('phone');
+
+let pendingRect = null;
+
+function openAdd(){
+  preview.style.display='none'; preview.src=''; dropText.textContent='Перетягніть фото сюди або натисніть';
+  titleIn.value=''; descIn.value=''; phoneIn.value='';
   addOverlay.classList.add('on');
 }
+aCancel.onclick = ()=> addOverlay.classList.remove('on');
+addOverlay.addEventListener('click', e=>{ if(e.target===addOverlay) addOverlay.classList.remove('on'); });
 
 drop.addEventListener('click', ()=> file.click());
-drop.addEventListener('dragover',e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
-drop.addEventListener('dragleave',()=>{ drop.style.borderColor="#cfd3da"; });
-drop.addEventListener('drop',e=>{
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
+drop.addEventListener('dragleave', ()=>{ drop.style.borderColor="#cfd3da"; });
+drop.addEventListener('drop', e=>{
   e.preventDefault(); drop.style.borderColor="#cfd3da";
   if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
-file.addEventListener('change',e=>{ if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
+file.addEventListener('change', e=>{ if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(f){
-  if(!/^image\//.test(f.type)) return alert("Please choose an image");
-  const r=new FileReader(); r.onload=()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent='Image selected'; }; r.readAsDataURL(f);
+  if(!/^image\//.test(f.type)) return alert('Будь ласка, оберіть зображення.');
+  const r=new FileReader();
+  r.onload=()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent='Фото завантажено'; };
+  r.readAsDataURL(f);
 }
 
-addCancel.onclick = ()=> addOverlay.classList.remove('on');
-addOverlay.addEventListener('click',e=>{ if(e.target===addOverlay) addOverlay.classList.remove('on'); });
+aSave.onclick = async ()=>{
+  if (!pendingRect) return;
+  if (!preview.src) return alert('Додайте фото оголошення.');
+  if (!titleIn.value.trim()) return alert('Вкажіть заголовок.');
+  if (!phoneIn.value.trim()) return alert('Вкажіть телефон.');
 
-addSave.onclick = async ()=>{
-  if (!addRect) return;
-  if (!preview.src) return alert("Please add an image first.");
-  // сжимаем под короткую сторону плитки
-  const shortSide = Math.min(addRect.w, addRect.h);
-  const img = await downscaleToWebP(preview.src, Math.max(240, Math.round(shortSide*0.9)));
-  claims[addRect.id] = { img, name:"Golden Million Member", desc:(desc.value||"I was here.").slice(0,80) };
-  persist();
+  // анти-спам: чи не стане кластер > 4
+  const would = clusterSizeIfAdd(OWNER_ID, pendingRect.id);
+  if (would > 4){ alert('Обмеження: максимум 4 сусідні слоти для одного користувача.'); return; }
+
+  // стискаємо під розмір плитки
+  const shortSide = Math.min(pendingRect.w, pendingRect.h);
+  const img = await downscaleToWebP(preview.src, Math.max(260, Math.round(shortSide*0.9)));
+  claims[pendingRect.id] = {
+    img, title: titleIn.value.slice(0,60), desc: descIn.value.slice(0,160),
+    phone: phoneIn.value.slice(0,20), views: rint(0,30), owner: OWNER_ID
+  };
+  saveClaims();
   addOverlay.classList.remove('on');
   draw();
 };
 
-/* ========= Utils: compress to WebP (quota-safe) ========= */
+/* Стиснення до WebP */
 function loadImgBlob(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
 async function downscaleToWebP(dataURL, targetShort){
   const im = await loadImgBlob(dataURL);
   const short = Math.min(im.width, im.height);
   const scale = Math.min(1, targetShort/short);
   const w = Math.max(180, Math.round(im.width*scale));
-  const h = Math.max(180, Math.round(im.height*scale));
+  const h = Math.max(140, Math.round(im.height*scale));
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const g = c.getContext('2d'); g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
   g.drawImage(im, 0,0,w,h);
@@ -436,8 +458,20 @@ async function downscaleToWebP(dataURL, targetShort){
   return out;
 }
 
-/* =================== BOOT =================== */
-resize(); // first draw
+/* ================== ЗУМ БЕЗ ПАНОРАМИ ================== */
+document.getElementById('stage').addEventListener('wheel', e=>{
+  e.preventDefault();
+  const factor = e.deltaY<0 ? 1.12 : 1/1.12;
+  SCALE = clamp(SCALE*factor, 0.25, 3);
+  draw();
+},{passive:false});
+window.addEventListener('keydown', e=>{
+  if (e.key==='+' || e.key==='='){ SCALE = clamp(SCALE*1.12, 0.25, 3); draw(); }
+  if (e.key==='-' || e.key==='_'){ SCALE = clamp(SCALE/1.12, 0.25, 3); draw(); }
+});
+
+/* ================== СТАРТ ================== */
+resize(); // перший рендер
 </script>
 </body>
 </html>
