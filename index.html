@@ -12,7 +12,8 @@
   .cta{pointer-events:auto;display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:999px;padding:8px 14px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
   .dot{width:10px;height:10px;border-radius:50%;background:radial-gradient(#ffd24d,#e1b526)}
   .cta b{font-weight:800}.cta span{color:var(--muted)}
-  #field{position:fixed;inset:0;display:block;cursor:crosshair}
+  #field{position:fixed;inset:0;display:block;cursor:grab}
+  #field:active{cursor:grabbing}
 
   .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:50}
   .overlay.on{display:flex}
@@ -27,13 +28,15 @@
   .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
   .btn{appearance:none;border:1px solid var(--line);background:#fff;color:#111;padding:8px 12px;border-radius:10px;cursor:pointer}
   .btn.primary{border-color:#111;background:#111;color:#fff}
-  .range{width:100%}
   .mini{font-size:12px;color:#666}
 </style>
 </head>
 <body>
 <header>
-  <div class="cta"><div class="dot"></div><b>GOLDEN MILLION</b><span>Get in now — be remembered beside legends.</span></div>
+  <div class="cta">
+    <div class="dot"></div><b>GOLDEN MILLION</b>
+    <span>Get in now — be remembered beside legends.</span>
+  </div>
 </header>
 
 <canvas id="field"></canvas>
@@ -51,19 +54,20 @@
 <!-- ADD (free) -->
 <div class="overlay" id="addOverlay">
   <div class="card">
-    <h3 class="title">Claim your golden spot — $1 / year (test mode, no payment yet)</h3>
+    <h3 class="title">Claim your golden spot — $1 / year (test mode)</h3>
     <p class="sub">Add your image and a short line about yourself. Saved locally in your browser for now.</p>
     <div class="row">
       <div class="col">
-        <div class="drop" id="drop"><input type="file" id="file" accept="image/*" style="display:none"><span id="dropText">Drop an image here (or click)</span></div>
+        <div class="drop" id="drop">
+          <input type="file" id="file" accept="image/*" style="display:none">
+          <span id="dropText">Drop an image here (or click)</span>
+        </div>
         <img id="preview" class="thumb" alt="" style="display:none;margin-top:8px">
       </div>
       <div class="col">
         <label class="sub" for="desc">Your short line (max 80 chars)</label>
         <input class="input" id="desc" maxlength="80" placeholder="I was here. 2025.">
-        <label class="sub" for="size">Tile size (cells): <span id="sizeLabel">8×8</span></label>
-        <input id="size" class="range" type="range" min="4" max="24" step="1" value="8">
-        <div class="mini">Bigger tile = larger image area. Aspect is kept near square; shapes are irregular.</div>
+        <p class="mini">Size of the tile is fixed by the mosaic. Zoom/pan the wall to explore.</p>
       </div>
     </div>
     <div class="actions"><button class="btn" id="addCancel">Cancel</button><button class="btn primary" id="addSave">Save (test)</button></div>
@@ -72,12 +76,12 @@
 
 <script>
 /* =========================================================
-   GOLDEN MILLION — million-slot canvas (no backend)
-   - Base grid: 1000×1000 microcells (1,000,000)
-   - Variable-sized "photo tiles" = clusters of microcells (chaotic sizes)
-   - 100 biggest clusters prefilled with legends (no Putin)
-   - Save user tiles (image+text) into localStorage (image auto-compressed to WebP)
-   - Zoom/Pan; irregular masks for photos; initial view shows whole wall
+   GOLDEN MILLION — one-file demo with a 1000-piece random tiling
+   - 1,000 variable-sized rectangles tile the 1,000,000-cell wall
+   - Top-100 largest rectangles are prefilled with “legends” (no Putin)
+   - Click occupied → smooth modal; click free → add (stored in localStorage)
+   - Images auto-compress to WebP to avoid quota
+   - Pan (drag) & Zoom (wheel). Initial view shows the whole wall.
    ========================================================= */
 
 /* ---------- Canvas & world ---------- */
@@ -85,8 +89,10 @@ const CAN = document.getElementById('field');
 const CTX = CAN.getContext('2d', { alpha:false });
 let DPR = Math.max(1, window.devicePixelRatio || 1);
 
-const GRID = { cols:1000, rows:1000, cell:10 };      // 1e6 microcells
-const WORLD = { w: GRID.cols*GRID.cell, h: GRID.rows*GRID.cell };
+const WORLD_CELLS_W = 1000, WORLD_CELLS_H = 1000; // conceptual 1e6 cells
+const CELL = 10; // world cell size in px (before scaling)
+const WORLD = { w: WORLD_CELLS_W*CELL, h: WORLD_CELLS_H*CELL };
+
 let W=0,H=0, scale=0.12, offX=0, offY=0;
 
 function fit(){
@@ -99,20 +105,73 @@ function fit(){
 }
 window.addEventListener('resize', fit);
 
-/* ---------- Helpers ---------- */
 const clamp = (n,a,b)=> Math.max(a, Math.min(b,n));
 function worldToScreen(wx,wy){ return [(wx*scale + offX), (wy*scale + offY)]; }
 function screenToWorld(sx,sy){ return [(sx - offX)/scale, (sy - offY)/scale]; }
-function seededRand(seed){ let x = seed|0; x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967296; }
 
-/* ---------- Storage (local) ---------- */
-const LS_KEY = "golden_million_tiles_v3";
-let tiles = [];           // [{id,type,x,y,w,h,img,desc,name,seed}]
-let occ = new Map();      // "x_y" -> tileId
-try{ const raw = localStorage.getItem(LS_KEY); if (raw) tiles = JSON.parse(raw); }catch(e){ tiles=[]; }
-rebuildOcc();
+/* ---------- Random TILING into 1000 rectangles ---------- */
+function makeRect(x,y,w,h){ return {x,y,w,h, area:w*h}; }
+function splitRect(r){
+  // prefer splitting along the longer side, but randomize a bit
+  const horiz = (r.w >= r.h) ? Math.random() > 0.2 : Math.random() < 0.2;
+  if (horiz) {
+    const min = Math.max(40, Math.floor(r.w*0.33));
+    const max = Math.min(r.w-40, Math.floor(r.w*0.67));
+    if (max <= min) return [r];
+    const cut = randInt(min, max);
+    return [makeRect(r.x, r.y, cut, r.h), makeRect(r.x+cut, r.y, r.w-cut, r.h)];
+  } else {
+    const min = Math.max(40, Math.floor(r.h*0.33));
+    const max = Math.min(r.h-40, Math.floor(r.h*0.67));
+    if (max <= min) return [r];
+    const cut = randInt(min, max);
+    return [makeRect(r.x, r.y, r.w, cut), makeRect(r.x, r.y+cut, r.w, r.h-cut)];
+  }
+}
+function randInt(a,b){ return Math.floor(a + Math.random()*(b-a+1)); }
 
-/* ---------- Legends (100 largest) ---------- */
+function buildTiling(targetCount){
+  const list = [ makeRect(0,0, WORLD.w, WORLD.h) ];
+  while (list.length < targetCount) {
+    // pick the largest splittable rect (and avoid crazy aspect ratios)
+    let idx=-1, best=-1;
+    for (let i=0;i<list.length;i++){
+      const r = list[i];
+      const aspect = r.w / r.h;
+      const splittable = (r.w > 80 && r.h > 80); // keep from becoming too tiny
+      if (splittable && r.area > best) { best=r.area; idx=i; }
+    }
+    if (idx === -1) break;
+    const r = list.splice(idx,1)[0];
+    const [a,b] = splitRect(r);
+    if (b) { a.area=a.w*a.h; b.area=b.w*b.h; list.push(a,b); }
+    else   { list.push(r); break; }
+  }
+  // prevent too skinny rectangles by a few corrective splits
+  for (let k=0;k<list.length;k++){
+    const r = list[k], aspect = r.w/r.h;
+    if (aspect>2.2 || aspect<0.45){
+      const [a,b] = splitRect(r);
+      if (b){ list.splice(k,1,a,b); k--; }
+    }
+  }
+  // trim/exact count
+  while (list.length > targetCount) list.pop();
+
+  // assign ids
+  list.forEach((r,i)=> r.id=i);
+  return list;
+}
+
+let layout = buildTiling(1000);
+
+/* ---------- Local storage of claims ---------- */
+const LS_KEY = "golden_million_claims_v4";
+let claims = {}; // id -> {img, name, desc}
+try{ claims = JSON.parse(localStorage.getItem(LS_KEY)||"{}"); }catch(e){ claims = {}; }
+function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){ alert("Storage quota exceeded. Try a smaller image."); }}
+
+/* ---------- Legends in the largest 100 rectangles ---------- */
 const LEGEND_NAMES = [
   "Abraham Lincoln","Nelson Mandela","Mahatma Gandhi","Martin Luther King Jr.","Winston Churchill",
   "Volodymyr Zelenskyy","George Washington","Napoleon Bonaparte","Julius Caesar","Cleopatra",
@@ -134,7 +193,7 @@ const LEGEND_NAMES = [
   "Desmond Tutu","Lech Wałęsa","Václav Havel","Stephen Hawking","Jane Goodall",
   "Neil Armstrong","Yuri Gagarin","Amelia Earhart","J.R.R. Tolkien","George R. R. Martin",
   "J.K. Rowling","Haruki Murakami","Gabriel García Márquez","Oprah Winfrey","Greta Thunberg"
-];
+]; // 100
 
 function svgPortrait(name){
   const initials = name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
@@ -152,118 +211,20 @@ function svgPortrait(name){
   return "data:image/svg+xml;utf8,"+esc(svg);
 }
 
-/* Place 100 big legend tiles (if not already saved) */
-if (!tiles.some(t=>t.type==="legend")){
-  const placed = [];
-  let tries=0, i=0;
-  while(i<LEGEND_NAMES.length && tries<200000){
-    tries++;
-    // sizes (in microcells): legends — большие, «не вытянутые»
-    const w = Math.floor( seededRand(1000+i)* (24-16) + 16 ); // 16..24
-    const hBase = Math.floor(w * (0.85 + seededRand(2000+i)*0.3)); // 0.85..1.15 * w
-    const h = clamp(hBase, 14, 26);
-    const x = Math.floor(Math.random()*(GRID.cols - w - 2)) + 1;
-    const y = Math.floor(Math.random()*(GRID.rows - h - 2)) + 1;
-    if (collides(x,y,w,h)) continue;
+// assign only once (keep your user claims)
+(function prefillLegends(){
+  const already = Object.values(claims).filter(v=>v && v.legend).length;
+  if (already >= LEGEND_NAMES.length) return;
+  // sort rectangles by area desc
+  const sorted = [...layout].sort((a,b)=>b.area-a.area).slice(0, LEGEND_NAMES.length);
+  sorted.forEach((r, i)=>{
     const name = LEGEND_NAMES[i];
-    const id = "legend_"+i;
-    const t = { id, type:"legend", x,y,w,h, name, desc:"Part of the Golden Million.", img: svgPortrait(name), seed: (i+1)*99991 };
-    tiles.push(t);
-    occupy(id,x,y,w,h);
-    i++;
-  }
+    if (!claims[r.id]) claims[r.id] = { img: svgPortrait(name), name, desc: "Part of the Golden Million.", legend: true };
+  });
   persist();
-}
+})();
 
-/* ---------- Drawing ---------- */
-function draw(){
-  CTX.setTransform(1,0,0,1,0,0);
-  CTX.fillStyle="#fff"; CTX.fillRect(0,0,W,H);
-
-  const [wx0, wy0] = screenToWorld(0,0);
-  const [wx1, wy1] = screenToWorld(W,H);
-  const minX = clamp(Math.floor(wx0/GRID.cell)-2,0,GRID.cols-1);
-  const minY = clamp(Math.floor(wy0/GRID.cell)-2,0,GRID.rows-1);
-  const maxX = clamp(Math.floor(wx1/GRID.cell)+2,0,GRID.cols-1);
-  const maxY = clamp(Math.floor(wy1/GRID.cell)+2,0,GRID.rows-1);
-
-  // grid lines (light)
-  CTX.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line').trim() || '#e5e7eb';
-  CTX.lineWidth = Math.max(1, 0.5*DPR);
-  CTX.beginPath();
-  for(let y=minY; y<=maxY; y++){
-    const [sx0, sy] = worldToScreen(minX*GRID.cell, y*GRID.cell);
-    const [sx1, ]  = worldToScreen((maxX+1)*GRID.cell, y*GRID.cell);
-    CTX.moveTo(sx0,sy); CTX.lineTo(sx1,sy);
-  }
-  for(let x=minX; x<=maxX; x++){
-    const [sx, sy0] = worldToScreen(x*GRID.cell, minY*GRID.cell);
-    const [, sy1]   = worldToScreen(x*GRID.cell, (maxY+1)*GRID.cell);
-    CTX.moveTo(sx,sy0); CTX.lineTo(sx,sy1);
-  }
-  CTX.stroke();
-
-  // draw tiles (only those intersecting viewport)
-  const sPix = scale*GRID.cell;
-  const viewTiles = tiles.filter(t => rectsIntersect(
-    t.x*GRID.cell, t.y*GRID.cell, t.w*GRID.cell, t.h*GRID.cell,
-    wx0, wy0, wx1-wx0, wy1-wy0
-  ));
-  for(const t of viewTiles){
-    const [sx,sy] = worldToScreen(t.x*GRID.cell, t.y*GRID.cell);
-    const sw = t.w*GRID.cell*scale, sh = t.h*GRID.cell*scale;
-    // irregular mask
-    CTX.save(); CTX.translate(sx,sy); CTX.scale(scale,scale);
-    beginIrregularPath(t.x,t.y,t.w,t.h,t.seed); CTX.clip();
-    drawImageCover(t.img, 0,0, t.w*GRID.cell, t.h*GRID.cell);
-    CTX.restore();
-
-    // outline at big zoom
-    if (sPix > 14){
-      CTX.save(); CTX.translate(sx,sy); CTX.scale(scale,scale);
-      CTX.lineWidth = Math.max(1, 0.7*DPR);
-      CTX.strokeStyle = '#d0d4dc';
-      beginIrregularPath(t.x,t.y,t.w,t.h,t.seed); CTX.stroke();
-      CTX.restore();
-    }
-  }
-}
-
-function beginIrregularPath(x,y,w,h,seed){
-  const s = GRID.cell;
-  const id = (x*73856093 ^ y*19349663 ^ (seed||1)) >>> 0;
-  const rnd = k => seededRand(id + k);
-  const j = 0.22*s; // jitter per segment
-  const stepsX = Math.max(4, Math.floor(w/4));
-  const stepsY = Math.max(4, Math.floor(h/4));
-  CTX.beginPath();
-  // top
-  for(let i=0;i<=stepsX;i++){
-    const px = x*s + (i/stepsX)*w*s;
-    const py = y*s + (rnd(i)*j);
-    (i===0) ? CTX.moveTo(px,py) : CTX.lineTo(px,py);
-  }
-  // right
-  for(let i=1;i<=stepsY;i++){
-    const px = (x+w)*s - (rnd(i+11)*j);
-    const py = y*s + (i/stepsY)*h*s;
-    CTX.lineTo(px,py);
-  }
-  // bottom
-  for(let i=1;i<=stepsX;i++){
-    const px = (x+w)*s - (i/stepsX)*w*s;
-    const py = (y+h)*s - (rnd(i+23)*j);
-    CTX.lineTo(px,py);
-  }
-  // left
-  for(let i=1;i<=stepsY;i++){
-    const px = x*s + (rnd(i+37)*j);
-    const py = (y+h)*s - (i/stepsY)*h*s;
-    CTX.lineTo(px,py);
-  }
-  CTX.closePath();
-}
-
+/* ---------- Image cache & draw helpers ---------- */
 const imgCache = new Map();
 function loadImg(src){
   if (imgCache.has(src)) return imgCache.get(src);
@@ -281,42 +242,97 @@ async function drawImageCover(src,x,y,w,h){
   }catch(e){}
 }
 
-/* ---------- Geometry/occupancy ---------- */
-function rectsIntersect(ax,ay,aw,ah, bx,by,bw,bh){
-  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
-}
-function collides(x,y,w,h){
-  for(let yy=y; yy<y+h; yy++){
-    for(let xx=x; xx<x+w; xx++){
-      if (occ.has(xx+"_"+yy)) return true;
-    }
+/* ---------- Irregular border for every tile ---------- */
+function beginIrregularRectPath(x,y,w,h,seed){
+  const rnd = (k)=>{ let t=(seed||1)*1103515245 + k*12345; t = (t>>>0)/4294967296; return t; };
+  const stepsX = Math.max(4, Math.floor(w/120));
+  const stepsY = Math.max(4, Math.floor(h/120));
+  const j = 12; // jitter px
+  CTX.beginPath();
+  // top
+  for(let i=0;i<=stepsX;i++){
+    const px = x + (i/stepsX)*w;
+    const py = y + rnd(i)*j;
+    (i===0) ? CTX.moveTo(px,py) : CTX.lineTo(px,py);
   }
-  return false;
+  // right
+  for(let i=1;i<=stepsY;i++){
+    const px = x + w - rnd(i+11)*j;
+    const py = y + (i/stepsY)*h;
+    CTX.lineTo(px,py);
+  }
+  // bottom
+  for(let i=1;i<=stepsX;i++){
+    const px = x + w - (i/stepsX)*w;
+    const py = y + h - rnd(i+23)*j;
+    CTX.lineTo(px,py);
+  }
+  // left
+  for(let i=1;i<=stepsY;i++){
+    const px = x + rnd(i+37)*j;
+    const py = y + h - (i/stepsY)*h;
+    CTX.lineTo(px,py);
+  }
+  CTX.closePath();
 }
-function occupy(id,x,y,w,h){
-  for(let yy=y; yy<y+h; yy++){
-    for(let xx=x; xx<x+w; xx++){
-      occ.set(xx+"_"+yy, id);
+
+/* ---------- Drawing ---------- */
+function draw(){
+  CTX.setTransform(1,0,0,1,0,0);
+  CTX.fillStyle="#fff"; CTX.fillRect(0,0,W,H);
+
+  const [wx0, wy0] = screenToWorld(0,0);
+  const [wx1, wy1] = screenToWorld(W,H);
+
+  // Draw only tiles in viewport
+  for (const r of layout){
+    if (r.x + r.w < wx0 || r.y + r.h < wy0 || r.x > wx1 || r.y > wy1) continue;
+    const [sx, sy] = worldToScreen(r.x, r.y);
+    const sw = r.w*scale, sh = r.h*scale;
+
+    // content (if claimed)
+    const claim = claims[r.id];
+    if (claim){
+      CTX.save();
+      beginIrregularRectPath(sx, sy, sw, sh, r.id*9173);
+      CTX.clip();
+      awaitOrQueue(drawImageCover(claim.img, sx, sy, sw, sh));
+      CTX.restore();
     }
+
+    // outline
+    CTX.save();
+    CTX.lineWidth = Math.max(1, 0.7*DPR);
+    CTX.strokeStyle = '#d0d4dc';
+    beginIrregularRectPath(sx, sy, sw, sh, r.id*9173);
+    CTX.stroke();
+    CTX.restore();
   }
 }
-function freeRegion(x,y,w,h){
-  for(let yy=y; yy<y+h; yy++){
-    for(let xx=x; xx<x+w; xx++){
-      occ.delete(xx+"_"+yy);
-    }
-  }
+
+let drawQueue = Promise.resolve();
+function awaitOrQueue(p){ drawQueue = drawQueue.then(()=>p).catch(()=>{}); }
+
+/* ---------- Hit testing ---------- */
+function rectHit(r, sx, sy){
+  const [x,y] = worldToScreen(r.x, r.y);
+  const w = r.w*scale, h = r.h*scale;
+  return sx>=x && sy>=y && sx<=x+w && sy<=y+h;
 }
-function rebuildOcc(){
-  occ.clear();
-  for(const t of tiles) occupy(t.id,t.x,t.y,t.w,t.h);
+function hitTest(clientX, clientY){
+  const sx = clientX * DPR, sy = clientY * DPR;
+  // scan from top (last drawn) for better UX, but 1000 rects = ok either way
+  for (let i=layout.length-1; i>=0; i--){
+    if (rectHit(layout[i], sx, sy)) return layout[i];
+  }
+  return null;
 }
 
 /* ---------- Interactions ---------- */
-let dragging=false, sx=0, sy=0, ox=0, oy=0;
-CAN.addEventListener('mousedown',e=>{ dragging=true; sx=e.clientX; sy=e.clientY; ox=offX; oy=offY; });
+let dragging=false, sX=0, sY=0, oX=0, oY=0;
+CAN.addEventListener('mousedown',e=>{ dragging=true; sX=e.clientX; sY=e.clientY; oX=offX; oY=offY; });
 window.addEventListener('mouseup',()=> dragging=false);
-window.addEventListener('mousemove',e=>{ if(dragging){ offX = ox + (e.clientX - sx)*DPR; offY = oy + (e.clientY - sy)*DPR; draw(); }});
+window.addEventListener('mousemove',e=>{ if(dragging){ offX = oX + (e.clientX - sX)*DPR; offY = oY + (e.clientY - sY)*DPR; draw(); }});
 CAN.addEventListener('wheel',e=>{
   e.preventDefault();
   const delta = Math.sign(e.deltaY)*-0.08;
@@ -328,18 +344,12 @@ CAN.addEventListener('wheel',e=>{
   draw();
 },{passive:false});
 
-CAN.addEventListener('click',(e)=>{
-  const rect = CAN.getBoundingClientRect();
-  const [wx, wy] = screenToWorld((e.clientX-rect.left)*DPR,(e.clientY-rect.top)*DPR);
-  const cx = clamp(Math.floor(wx/GRID.cell),0,GRID.cols-1);
-  const cy = clamp(Math.floor(wy/GRID.cell),0,GRID.rows-1);
-  const id = occ.get(cx+"_"+cy);
-  if (id){
-    const t = tiles.find(t=>t.id===id);
-    openView(t);
-  } else {
-    openAdd(cx,cy);
-  }
+CAN.addEventListener('click', (e)=>{
+  const rect = hitTest(e.clientX, e.clientY);
+  if (!rect) return;
+  const claim = claims[rect.id];
+  if (claim) openView(claim);
+  else       openAdd(rect);
 });
 
 /* ---------- View modal ---------- */
@@ -350,10 +360,10 @@ const viewSub = document.getElementById('viewSub');
 document.getElementById('viewClose').onclick = ()=> viewOverlay.classList.remove('on');
 viewOverlay.addEventListener('click',e=>{ if(e.target===viewOverlay) viewOverlay.classList.remove('on'); });
 
-function openView(t){
-  viewTitle.textContent = t.name || "Member of the Golden Million";
-  viewSub.textContent = t.desc || "“A short line for history.”";
-  viewImg.src = t.img;
+function openView(rec){
+  viewTitle.textContent = rec.name || "Member of the Golden Million";
+  viewSub.textContent = rec.desc || "“A short line for history.”";
+  viewImg.src = rec.img;
   viewOverlay.classList.add('on');
 }
 
@@ -366,11 +376,8 @@ const file       = document.getElementById('file');
 const preview    = document.getElementById('preview');
 const dropText   = document.getElementById('dropText');
 const desc       = document.getElementById('desc');
-const sizeRange  = document.getElementById('size');
-const sizeLabel  = document.getElementById('sizeLabel');
 
-let addAnchor = {x:0,y:0};
-sizeRange.addEventListener('input', ()=> sizeLabel.textContent = sizeRange.value+"×"+sizeRange.value);
+let addRect = null;
 
 drop.addEventListener('click', ()=> file.click());
 drop.addEventListener('dragover',e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
@@ -380,6 +387,7 @@ drop.addEventListener('drop',e=>{
   if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
 file.addEventListener('change',e=>{ if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
+
 function handleFile(f){
   if(!/^image\//.test(f.type)) return alert("Please choose an image");
   const r=new FileReader(); r.onload=()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent="Image selected"; }; r.readAsDataURL(f);
@@ -388,68 +396,40 @@ function handleFile(f){
 addCancel.onclick = ()=> addOverlay.classList.remove('on');
 addOverlay.addEventListener('click',e=>{ if(e.target===addOverlay) addOverlay.classList.remove('on'); });
 
-function openAdd(x,y){
-  addAnchor = {x,y};
+function openAdd(r){
+  addRect = r;
   preview.style.display='none'; preview.src=''; dropText.textContent="Drop an image here (or click)";
-  desc.value=""; sizeRange.value=8; sizeLabel.textContent="8×8";
+  desc.value="";
   addOverlay.classList.add('on');
 }
 
 addSave.onclick = async ()=>{
+  if (!addRect) return;
   if (!preview.src) return alert("Please add an image first.");
-  const text = (desc.value||"I was here.").slice(0,80);
-  const side = parseInt(sizeRange.value,10);
-  // find nearest free region around anchor
-  const pos = findSpotNear(addAnchor.x, addAnchor.y, side, side);
-  if (!pos){ alert("No free space nearby — zoom/pan and click another free area."); return; }
-  // compress image to WebP (keeps storage small)
-  const compressed = await downscaleToWebP(preview.src, side*96); // ~96px per cell side for quality
-  const id = "u_"+Date.now()+"_"+Math.random().toString(36).slice(2);
-  const t = { id, type:"user", x:pos.x, y:pos.y, w:side, h:side, img: compressed, name:"Golden Million Member", desc:text, seed: (pos.x*911 + pos.y*613) };
-  tiles.push(t); occupy(id, t.x,t.y,t.w,t.h);
+  const compressed = await downscaleToWebP(preview.src, Math.min(addRect.w, addRect.h));
+  claims[addRect.id] = { img: compressed, name: "Golden Million Member", desc: (desc.value||"I was here.").slice(0,80) };
   persist();
   addOverlay.classList.remove('on');
   draw();
 };
 
-function findSpotNear(cx,cy,w,h){
-  const maxR = 200; // scan radius in cells
-  for (let r=0; r<maxR; r+=2){
-    const x0 = clamp(cx - r, 0, GRID.cols - w);
-    const y0 = clamp(cy - r, 0, GRID.rows - h);
-    const x1 = clamp(cx + r, 0, GRID.cols - w);
-    const y1 = clamp(cy + r, 0, GRID.rows - h);
-    for (let y=y0; y<=y1; y+=2){
-      for (let x=x0; x<=x1; x+=2){
-        if (!collides(x,y,w,h)) return {x,y};
-      }
-    }
-  }
-  return null;
-}
-
-function persist(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(tiles)); }
-  catch(e){ alert("Storage quota exceeded. Image too large. Try a smaller image."); }
-}
-
-/* Downscale to WebP (keeps <~200KB) */
-async function downscaleToWebP(dataURL, targetPx=768){
+/* Downscale to WebP proportional to tile size (keeps storage small) */
+async function downscaleToWebP(dataURL, tileShortSidePx){
   const img = await loadImg(dataURL);
-  const maxSide = Math.max(img.width, img.height);
-  const scale = Math.min(1, targetPx / maxSide);
-  const w = Math.max(64, Math.round(img.width * scale));
-  const h = Math.max(64, Math.round(img.height * scale));
+  // Target ~ 80px per 100px of tile short side in world space
+  const base = Math.max(200, Math.round(tileShortSidePx * 0.8));
+  const scale = Math.min(1, base / Math.min(img.width, img.height));
+  const w = Math.max(80, Math.round(img.width * scale));
+  const h = Math.max(80, Math.round(img.height * scale));
   const c = document.createElement('canvas'); c.width=w; c.height=h;
-  const c2 = c.getContext('2d'); c2.imageSmoothingEnabled=true; c2.imageSmoothingQuality='high';
-  c2.drawImage(img, 0,0,w,h);
-  // prefer WebP; fallback to JPEG
+  const g = c.getContext('2d'); g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+  g.drawImage(img, 0,0,w,h);
   let out = c.toDataURL('image/webp', 0.85);
   if (out.length > 4_500_000) out = c.toDataURL('image/jpeg', 0.85);
   return out;
 }
 
-/* ---------- Go ---------- */
+/* ---------- Init ---------- */
 fit(); draw();
 </script>
 </body>
