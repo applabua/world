@@ -3,53 +3,33 @@
 <head>
 <meta charset="utf-8">
 <title>GOLDEN MILLION — Get in now, be remembered beside legends.</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root{
-    --bg:#fff; --ink:#111; --muted:#6b7280; --grid:#e6e9ef; --tile:#222; --overlay:rgba(0,0,0,.5);
-  }
+  :root{ --bg:#fff; --ink:#111; --muted:#6b7280; --line:#e4e7ee; --outline:#cfd6e3; --overlay:rgba(0,0,0,.5); }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
   header{position:fixed;inset:0 0 auto 0;z-index:20;display:flex;justify-content:center;padding:8px 12px;pointer-events:none}
   .cta{pointer-events:auto;display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.96);border:1px solid #e7ebf2;border-radius:999px;padding:8px 14px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
   .dot{width:10px;height:10px;border-radius:50%;background:radial-gradient(#ffd24d,#e1b526)}
   .cta b{font-weight:800}.cta span{color:var(--muted)}
-  /* Stage + world (zoom/pan) */
-  #stage{position:fixed;inset:0;overflow:hidden;background:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 32px 32px, 32px 32px;  /* видимая «миллионная» сетка */
-  }
-  #world{position:absolute; left:0; top:0; transform-origin:0 0; cursor:grab}
-  #world.dragging{cursor:grabbing}
-  /* Tile = одна «клетка» мозаики */
-  .tile{
-    position:absolute; border:2px solid var(--tile); background:#fff; overflow:hidden; border-radius:2px;
-  }
-  .tile img{width:100%; height:100%; object-fit:cover; display:block}
-  .tile .caption{
-    position:absolute; left:0; right:0; bottom:0;
-    background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.55));
-    color:#fff; font-size:12px; padding:6px 8px; line-height:1.2;
-    display:flex; justify-content:space-between; gap:8px;
-  }
-  .tile .caption b{font-weight:700}
-  /* Overlays / modals */
-  .overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:var(--overlay); z-index:50}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block; max-width:100vw; max-height:100vh; width:100%; height:100%}
+
+  /* Modals */
+  .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:50}
   .overlay.on{display:flex}
-  .card{width:min(760px,92vw); background:#fff; border:1px solid #e7ebf2; border-radius:16px; padding:16px; box-shadow:0 18px 60px rgba(0,0,0,.35); animation:pop .22s ease-out both}
+  .card{width:min(720px,92vw);background:#fff;border:1px solid #e7ebf2;border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:16px;animation:pop .22s ease-out both}
   @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
-  .title{margin:0 0 8px 0; font-weight:800}
-  .sub{margin:0 0 12px 0; color:var(--muted)}
-  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .title{margin:0 0 6px 0;font-weight:800}
+  .sub{margin:0 0 12px 0;color:var(--muted)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
   .col{flex:1 1 280px}
-  .drop{min-height:160px; border:1px dashed #cfd3da; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#666; background:#fafafa; cursor:pointer}
-  .thumb{max-width:100%; max-height:340px; border-radius:12px; border:1px solid #e7ebf2; display:block}
-  .input{width:100%; padding:10px 12px; border:1px solid #e7ebf2; border-radius:10px}
-  .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
-  .btn{appearance:none; border:1px solid #e7ebf2; background:#fff; color:#111; padding:8px 12px; border-radius:10px; cursor:pointer}
-  .btn.primary{border-color:#111; background:#111; color:#fff}
-  .mini{font-size:12px; color:#666}
+  .drop{min-height:160px;border:1px dashed #cfd3da;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#666;background:#fafafa;cursor:pointer}
+  .thumb{max-width:100%;max-height:340px;border-radius:12px;border:1px solid #e7ebf2;display:block}
+  .input{width:100%;padding:10px 12px;border:1px solid #e7ebf2;border-radius:10px}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+  .btn{appearance:none;border:1px solid #e7ebf2;background:#fff;color:#111;padding:8px 12px;border-radius:10px;cursor:pointer}
+  .btn.primary{border-color:#111;background:#111;color:#fff}
 </style>
 </head>
 <body>
@@ -57,11 +37,9 @@
   <div class="cta"><div class="dot"></div><b>GOLDEN MILLION</b><span>Get in now — be remembered beside legends.</span></div>
 </header>
 
-<div id="stage">
-  <div id="world"></div>
-</div>
+<div id="stage"><canvas id="wall"></canvas></div>
 
-<!-- View modal -->
+<!-- VIEW -->
 <div class="overlay" id="viewOverlay">
   <div class="card">
     <h3 class="title" id="viewTitle">Legend</h3>
@@ -71,23 +49,19 @@
   </div>
 </div>
 
-<!-- Add modal -->
+<!-- ADD -->
 <div class="overlay" id="addOverlay">
   <div class="card">
     <h3 class="title">Claim your golden spot — $1 / year (test mode)</h3>
     <p class="sub">Add your image and a short line about yourself. Saved locally in your browser for now.</p>
     <div class="row">
       <div class="col">
-        <div class="drop" id="drop">
-          <input type="file" id="file" accept="image/*" style="display:none">
-          <span id="dropText">Drop an image here (or click)</span>
-        </div>
-        <img id="preview" class="thumb" alt="" style="display:none; margin-top:8px">
+        <div class="drop" id="drop"><input type="file" id="file" accept="image/*" style="display:none"><span id="dropText">Drop an image here (or click)</span></div>
+        <img id="preview" class="thumb" alt="" style="display:none;margin-top:8px">
       </div>
       <div class="col">
         <label class="sub" for="desc">Your short line (max 80 chars)</label>
         <input class="input" id="desc" maxlength="80" placeholder="I was here. 2025.">
-        <p class="mini">Tiles have different sizes. Double-click a tile to zoom to it; drag to pan, wheel to zoom.</p>
       </div>
     </div>
     <div class="actions"><button class="btn" id="addCancel">Cancel</button><button class="btn primary" id="addSave">Save (test)</button></div>
@@ -95,66 +69,69 @@
 </div>
 
 <script>
-/* ======================= core config ======================= */
-const CELLS_X = 1000, CELLS_Y = 1000;        // «миллион» фоновых ячеек (визуально — сетка)
-const WORLD_W = 8000, WORLD_H = 4800;        // размер «стены» в px (до масштабирования)
-const TILES_COUNT = 1000;                    // прямоугольников в мозаике
-const LEGENDS_COUNT = 100;                   // топ-100 самых больших под легенды
-const SEED = 1337;                           // фиксированный seed для стабильной мозаики
+/* ========================= Core ========================= */
+const CAN = document.getElementById('wall');
+const CTX = CAN.getContext('2d', {alpha:false});
+let DPR = Math.max(1, window.devicePixelRatio || 1);
 
-/* ==================== util (seeded random) ==================== */
-let _seed = SEED>>>0;
-function srand(){ _seed = (_seed*1664525 + 1013904223)>>>0; return _seed/4294967296; }
-function randInt(a,b){ return Math.floor(a + srand()*(b-a+1)); }
+/* Logical million places: 1000×1000 cells (no background grid drawn). */
+const WORLD = { cells:1000, size:1000 }; // square 1000×1000 «единиц»
+/* We cover it by a mosaic of rectangles of different sizes. */
+const TILE_COUNT = 3000;                 // достаточно разнообразно и быстро
+const LEGENDS_COUNT = 100;               // топ-100 самых больших — под легенды
 
-/* ===================== build random tiling ===================== */
-function rect(x,y,w,h){ return {x,y,w,h, area:w*h, id:0}; }
+/* State */
+let tiles = [];      // [{id,x,y,w,h, area}]
+let claims = {};     // id -> {img, name, desc, legend}
+const LS_KEY = 'gm_canvas_claims_v1';
+
+/* ================== Utils & RNG (deterministic) ================== */
+let SEED = 123456789>>>0;
+function srand(){ SEED = (SEED*1664525 + 1013904223)>>>0; return SEED/4294967296; }
+function rint(a,b){ return Math.floor(a + srand()*(b-a+1)); }
+function rect(x,y,w,h){ return {id:0,x,y,w,h, area:w*h}; }
 function splitOne(r){
-  // сплитим вдоль длинной стороны, но не по центру и с минимальными полями
   const horiz = r.w >= r.h;
   if (horiz){
-    const min = Math.max(80, Math.floor(r.w*0.32));
-    const max = Math.min(r.w-80, Math.floor(r.w*0.68));
+    const min = Math.max(20, Math.floor(r.w*0.33));
+    const max = Math.min(r.w-20, Math.floor(r.w*0.67));
     if (max<=min) return [r];
-    const cut = randInt(min,max);
+    const cut = rint(min,max);
     return [ rect(r.x, r.y, cut, r.h), rect(r.x+cut, r.y, r.w-cut, r.h) ];
   } else {
-    const min = Math.max(80, Math.floor(r.h*0.32));
-    const max = Math.min(r.h-80, Math.floor(r.h*0.68));
+    const min = Math.max(20, Math.floor(r.h*0.33));
+    const max = Math.min(r.h-20, Math.floor(r.h*0.67));
     if (max<=min) return [r];
-    const cut = randInt(min,max);
+    const cut = rint(min,max);
     return [ rect(r.x, r.y, r.w, cut), rect(r.x, r.y+cut, r.w, r.h-cut) ];
   }
 }
-function buildTiling(n){
-  const list = [ rect(0,0, WORLD_W, WORLD_H) ];
-  while (list.length < n){
-    // выбираем самый большой, который ещё можно резать
+function buildMosaic(target){
+  const list = [ rect(0,0, WORLD.size, WORLD.size) ];
+  while(list.length < target){
     let idx=-1, best=-1;
-    for (let i=0;i<list.length;i++){
-      const r = list[i];
-      if ((r.w>160 && r.h>160) && r.area>best){ best=r.area; idx=i; }
+    for(let i=0;i<list.length;i++){
+      const r=list[i]; if (r.w>40 && r.h>40 && r.area>best){ best=r.area; idx=i; }
     }
     if (idx===-1) break;
-    const r = list.splice(idx,1)[0];
-    const [a,b] = splitOne(r);
+    const r=list.splice(idx,1)[0];
+    const [a,b]=splitOne(r);
     if (b){ a.area=a.w*a.h; b.area=b.w*b.h; list.push(a,b); } else list.push(r);
   }
-  // убираем чересчур вытянутые доп.сплитом
-  for (let k=0;k<list.length;k++){
-    const r = list[k], asp=r.w/r.h;
-    if (asp>2.6 || asp<0.4){
-      const pair = splitOne(r);
-      if (pair.length===2){ list.splice(k,1,pair[0],pair[1]); k--; }
+  // Correct too skinny
+  for(let k=0;k<list.length;k++){
+    const r=list[k], asp=r.w/r.h;
+    if (asp>3 || asp<0.33){
+      const p=splitOne(r);
+      if (p.length===2){ list.splice(k,1,p[0],p[1]); k--; }
     }
   }
-  while(list.length>n) list.pop();
+  while(list.length>target) list.pop();
   list.forEach((r,i)=> r.id=i);
   return list;
 }
-const layout = buildTiling(TILES_COUNT);
 
-/* ======================= legends dataset ======================= */
+/* =================== Legends (100 biggest) =================== */
 const LEGEND_PHOTOS = {
   "Napoleon Bonaparte":"https://upload.wikimedia.org/wikipedia/commons/5/50/Napoleon_Bonaparte_by_Jean-Auguste-Dominique_Ingres%2C_1806.jpg",
   "Donald Trump":"https://upload.wikimedia.org/wikipedia/commons/5/56/Donald_Trump_official_portrait.jpg",
@@ -176,7 +153,6 @@ const LEGEND_PHOTOS = {
   "Barack Obama":"https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg",
   "Joe Biden":"https://upload.wikimedia.org/wikipedia/commons/6/68/Joe_Biden_presidential_portrait.jpg",
   "Angela Merkel":"https://upload.wikimedia.org/wikipedia/commons/b/bb/Angela_Merkel_Juli_2010_-_3zu4.jpg"
-  // остальные легенды автоматически получат аватар-инициалы
 };
 const LEGEND_NAMES = Object.keys(LEGEND_PHOTOS).concat([
   "Nelson Mandela","Julius Caesar","Pablo Picasso","Vincent van Gogh","Michelangelo",
@@ -196,120 +172,136 @@ const LEGEND_NAMES = Object.keys(LEGEND_PHOTOS).concat([
   "Haruki Murakami","Gabriel García Márquez","Oprah Winfrey","Greta Thunberg","Galileo Galilei"
 ]).slice(0,LEGENDS_COUNT);
 
-/* ============= local storage for user images ============= */
-const LS_KEY = "gm_rect_claims_v1";
-let claims = {}; // rectId -> {img, name, desc, legend?}
-try{ claims = JSON.parse(localStorage.getItem(LS_KEY)||"{}"); }catch(e){ claims = {}; }
-function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){ alert("Storage quota exceeded. Try a smaller image."); }}
-
-/* ============== render HTML rectangles (no canvas) ============== */
-const world = document.getElementById('world');
-world.style.width = WORLD_W + 'px';
-world.style.height = WORLD_H + 'px';
-
 function initialsAvatar(name,w,h){
   const init = name.split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
-  const svg = `
-  <svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
-    <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
-      <stop offset='0%' stop-color='#fff2b2'/><stop offset='100%' stop-color='#e4c45e'/>
-    </linearGradient></defs>
-    <rect width='100%' height='100%' fill='url(#g)'/>
-    <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
-          font-family='system-ui,Arial' font-size='${Math.floor(Math.min(w,h)*0.35)}'
-          font-weight='800' fill='#111'>${init}</text>
-  </svg>`;
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
+  <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
+    <stop offset='0%' stop-color='#fff2b2'/><stop offset='100%' stop-color='#e4c45e'/>
+  </linearGradient></defs>
+  <rect width='100%' height='100%' fill='url(#g)'/>
+  <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
+        font-family='system-ui,Arial' font-size='${Math.floor(Math.min(w,h)*0.35)}'
+        font-weight='800' fill='#111'>${init}</text></svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
 }
 
-function fillLegends(){
-  // выбрать 100 самых больших прямоугольников
-  const sorted = [...layout].sort((a,b)=>b.area-a.area).slice(0, LEGENDS_COUNT);
-  for (let i=0;i<sorted.length;i++){
-    const r = sorted[i];
-    if (claims[r.id] && claims[r.id].legend) continue;
+/* ===================== Storage ===================== */
+try{ claims = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }catch(e){ claims = {}; }
+function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){ alert("Storage quota exceeded. Try a smaller image."); }}
+
+/* ===================== Build & Prefill ===================== */
+tiles = buildMosaic(TILE_COUNT);
+(function prefill(){
+  const have = Object.values(claims).filter(v=>v && v.legend).length;
+  if (have >= LEGENDS_COUNT) return;
+  const sorted = [...tiles].sort((a,b)=>b.area-a.area).slice(0,LEGENDS_COUNT);
+  sorted.forEach((t,i)=>{
     const name = LEGEND_NAMES[i] || "Legend";
-    const url = LEGEND_PHOTOS[name];
-    claims[r.id] = {
-      img: url || initialsAvatar(name, Math.max(200,Math.floor(r.w)), Math.max(200,Math.floor(r.h))),
-      name, desc: "Part of the Golden Million.", legend:true
+    const url  = LEGEND_PHOTOS[name];
+    claims[t.id] = {
+      img: url || initialsAvatar(name, Math.max(300, t.w), Math.max(300, t.h)),
+      name, desc:"Part of the Golden Million.", legend:true
     };
-  }
+  });
   persist();
+})();
+
+/* ===================== Rendering ===================== */
+let W=0,H=0, SCALE=1; // canvas pixel size & scale (cells->px)
+function resize(){
+  // fit whole wall inside viewport (fixed page)
+  const vw = Math.max(320, window.innerWidth);
+  const vh = Math.max(320, window.innerHeight);
+  const k = Math.min(vw, vh) * DPR;
+  // we keep aspect 1:1 for world (1000×1000)
+  W = Math.floor(vw * DPR); H = Math.floor(vh * DPR);
+  CAN.width = W; CAN.height = H;
+  CAN.style.width = vw + 'px'; CAN.style.height = vh + 'px';
+  SCALE = Math.min(W, H) / WORLD.size;
+  draw();
 }
+window.addEventListener('resize', resize);
 
-function drawDOM(){
-  world.innerHTML = '';
-  for (const r of layout){
-    const d = document.createElement('div');
-    d.className = 'tile';
-    d.style.left = r.x + 'px';
-    d.style.top = r.y + 'px';
-    d.style.width = r.w + 'px';
-    d.style.height = r.h + 'px';
-    d.dataset.id = r.id;
-    const claim = claims[r.id];
-    if (claim){
-      const img = document.createElement('img');
-      img.alt = claim.name || 'Member';
-      img.src = claim.img;
-      img.referrerPolicy = 'no-referrer';
-      img.onerror = ()=>{ img.src = initialsAvatar(claim.name||'Member', Math.max(200,Math.floor(r.w)), Math.max(200,Math.floor(r.h))); };
-      d.appendChild(img);
+const imgCache = new Map();
+function loadImg(src){
+  if (imgCache.has(src)) return imgCache.get(src);
+  const p = new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.referrerPolicy="no-referrer"; im.onload=()=>res(im); im.onerror=rej; im.src=src; });
+  imgCache.set(src,p); return p;
+}
+async function draw(){
+  CTX.setTransform(1,0,0,1,0,0);
+  CTX.fillStyle = "#fff"; CTX.fillRect(0,0,W,H);
 
-      const cap = document.createElement('div'); cap.className='caption';
-      const left = document.createElement('b'); left.textContent = (claim.name||'Member');
-      const right = document.createElement('span'); right.textContent = (claim.desc||'');
-      cap.appendChild(left); cap.appendChild(right);
-      d.appendChild(cap);
-    }
-    d.addEventListener('click', onTileClick);
-    world.appendChild(d);
+  // world origin centered
+  const offsetX = (W - WORLD.size*SCALE)/2;
+  const offsetY = (H - WORLD.size*SCALE)/2;
+
+  // outlines
+  CTX.lineWidth = Math.max(1, 0.8*DPR);
+  CTX.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--outline').trim() || '#cfd6e3';
+
+  for(const t of tiles){
+    const x = Math.floor(offsetX + t.x * SCALE);
+    const y = Math.floor(offsetY + t.y * SCALE);
+    const w = Math.ceil(t.w * SCALE);
+    const h = Math.ceil(t.h * SCALE);
+
+    // content if claimed
+    const claim = claims[t.id];
+    if (claim){ await drawCover(claim.img, x,y,w,h); }
+
+    // border
+    CTX.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   }
 }
 
-/* ============== interactions: zoom/pan/click ============== */
-let scale = 1, offsetX = 0, offsetY = 0;
-(function initTransform(){
-  const sFit = Math.min(window.innerWidth / WORLD_W, window.innerHeight / WORLD_H);
-  scale = sFit * 1.02;
-  setTransform();
-})();
-function setTransform(){ world.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`; }
+async function drawCover(src, x,y,w,h){
+  try{
+    const im = await loadImg(src);
+    const r = Math.max(w/im.width, h/im.height);
+    const iw = im.width*r, ih = im.height*r;
+    const ix = x + (w - iw)/2, iy = y + (h - ih)/2;
+    CTX.fillStyle="#fff"; CTX.fillRect(x,y,w,h);
+    CTX.drawImage(im, ix, iy, iw, ih);
+  }catch(e){
+    CTX.fillStyle="#f5e6a8"; CTX.fillRect(x,y,w,h);
+  }
+}
 
-let dragging=false, sx=0, sy=0, ox=0, oy=0;
-world.addEventListener('mousedown', e=>{ dragging=true; world.classList.add('dragging'); sx=e.clientX; sy=e.clientY; ox=offsetX; oy=offsetY; });
-window.addEventListener('mouseup', ()=>{ dragging=false; world.classList.remove('dragging'); });
-window.addEventListener('mousemove', e=>{ if(!dragging) return; offsetX = ox + (e.clientX - sx); offsetY = oy + (e.clientY - sy); setTransform(); });
-document.getElementById('stage').addEventListener('wheel', e=>{
-  e.preventDefault();
-  const rect = world.getBoundingClientRect();
-  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-  const delta = Math.sign(e.deltaY) * -0.08;
-  const ns = Math.min(3, Math.max(0.08, scale + delta));
-  // масштаб относительно точки под курсором
-  offsetX = e.clientX - (cx * ns);
-  offsetY = e.clientY - (cy * ns);
-  scale = ns; setTransform();
-},{passive:false});
-
-document.getElementById('stage').addEventListener('dblclick', e=>{
-  const el = e.target.closest('.tile'); if(!el) return;
-  const r = el.getBoundingClientRect();
-  const cx = r.left + r.width/2, cy = r.top + r.height/2;
-  const ns = Math.min(2.2, Math.max(0.3, Math.min(window.innerWidth/r.width, window.innerHeight/r.height) * 0.7));
-  offsetX = window.innerWidth/2 - (cx - offsetX) * (ns/scale);
-  offsetY = window.innerHeight/2 - (cy - offsetY) * (ns/scale);
-  scale = ns; setTransform();
+/* ===================== Hit testing ===================== */
+function screenToWorld(px,py){
+  const offsetX = (W - WORLD.size*SCALE)/2;
+  const offsetY = (H - WORLD.size*SCALE)/2;
+  const wx = (px*DPR - offsetX) / SCALE;
+  const wy = (py*DPR - offsetY) / SCALE;
+  return [wx,wy];
+}
+function pickTile(px,py){
+  const [wx,wy] = screenToWorld(px,py);
+  if (wx<0||wy<0||wx>WORLD.size||wy>WORLD.size) return null;
+  // 3k тайлов — линейный поиск быстрый
+  for (let i=tiles.length-1;i>=0;i--){
+    const t=tiles[i];
+    if (wx>=t.x && wy>=t.y && wx<=t.x+t.w && wy<=t.y+t.h) return t;
+  }
+  return null;
+}
+CAN.addEventListener('click', e=>{
+  const rect = CAN.getBoundingClientRect();
+  const t = pickTile(e.clientX-rect.left, e.clientY-rect.top);
+  if (!t) return;
+  const claim = claims[t.id];
+  if (claim) openView(claim);
+  else openAdd(t);
 });
 
-/* =================== modals: view / add =================== */
+/* ===================== Modals ===================== */
 const viewOverlay = document.getElementById('viewOverlay');
 const viewImg = document.getElementById('viewImg');
 const viewTitle = document.getElementById('viewTitle');
 const viewSub = document.getElementById('viewSub');
 document.getElementById('viewClose').onclick = ()=> viewOverlay.classList.remove('on');
-viewOverlay.addEventListener('click', e=>{ if(e.target===viewOverlay) viewOverlay.classList.remove('on'); });
+viewOverlay.addEventListener('click',e=>{ if(e.target===viewOverlay) viewOverlay.classList.remove('on'); });
 
 const addOverlay = document.getElementById('addOverlay');
 const addCancel  = document.getElementById('addCancel');
@@ -319,62 +311,54 @@ const file       = document.getElementById('file');
 const preview    = document.getElementById('preview');
 const dropText   = document.getElementById('dropText');
 const desc       = document.getElementById('desc');
-let addRectId = null;
+let addRect = null;
 
-function onTileClick(e){
-  const el = e.currentTarget;
-  const id = +el.dataset.id;
-  const claim = claims[id];
-  if (claim){
-    viewTitle.textContent = claim.name || 'Member of the Golden Million';
-    viewSub.textContent = claim.desc || '“A short line for history.”';
-    viewImg.src = claim.img;
-    viewOverlay.classList.add('on');
-  } else {
-    addRectId = id;
-    preview.style.display='none'; preview.src=''; dropText.textContent='Drop an image here (or click)'; desc.value='';
-    addOverlay.classList.add('on');
-  }
+function openView(rec){
+  viewTitle.textContent = rec.name || "Member of the Golden Million";
+  viewSub.textContent = rec.desc || "“A short line for history.”";
+  viewImg.src = rec.img; viewOverlay.classList.add('on');
+}
+function openAdd(t){
+  addRect = t;
+  preview.style.display='none'; preview.src=''; dropText.textContent='Drop an image here (or click)'; desc.value='';
+  addOverlay.classList.add('on');
 }
 
 drop.addEventListener('click', ()=> file.click());
-drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
-drop.addEventListener('dragleave', ()=>{ drop.style.borderColor="#cfd3da"; });
-drop.addEventListener('drop', e=>{
+drop.addEventListener('dragover',e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
+drop.addEventListener('dragleave',()=>{ drop.style.borderColor="#cfd3da"; });
+drop.addEventListener('drop',e=>{
   e.preventDefault(); drop.style.borderColor="#cfd3da";
   if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
-file.addEventListener('change', e=>{ if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
+file.addEventListener('change',e=>{ if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(f){
-  if (!/^image\//.test(f.type)) return alert('Please choose an image');
-  const r = new FileReader();
-  r.onload = ()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent='Image selected'; };
-  r.readAsDataURL(f);
+  if(!/^image\//.test(f.type)) return alert("Please choose an image");
+  const r=new FileReader(); r.onload=()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent='Image selected'; }; r.readAsDataURL(f);
 }
 
 addCancel.onclick = ()=> addOverlay.classList.remove('on');
-addOverlay.addEventListener('click', e=>{ if(e.target===addOverlay) addOverlay.classList.remove('on'); });
+addOverlay.addEventListener('click',e=>{ if(e.target===addOverlay) addOverlay.classList.remove('on'); });
 
 addSave.onclick = async ()=>{
-  if (addRectId==null) return;
-  if (!preview.src) return alert('Please add an image first.');
-  const r = layout.find(x=>x.id===addRectId);
-  const compressed = await downscaleToWebP(preview.src, Math.min(r.w, r.h));
-  claims[addRectId] = { img: compressed, name:'Golden Million Member', desc:(desc.value||'I was here.').slice(0,80) };
+  if (!addRect) return;
+  if (!preview.src) return alert("Please add an image first.");
+  // compress to WebP; target based on tile short side (in world cells)
+  const shortSide = Math.min(addRect.w, addRect.h);
+  const img = await downscaleToWebP(preview.src, Math.max(240, Math.round(shortSide*0.9)));
+  claims[addRect.id] = { img, name:"Golden Million Member", desc:(desc.value||"I was here.").slice(0,80) };
   persist();
   addOverlay.classList.remove('on');
-  drawDOM();
+  draw();
 };
 
-/* ======= downscale to WebP to avoid storage quota ======= */
-function loadImg(src){
-  return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; });
-}
-async function downscaleToWebP(dataURL, shortSidePx){
-  const im = await loadImg(dataURL);
-  const target = Math.max(260, Math.round(shortSidePx*0.9));
-  const scale = Math.min(1, target / Math.min(im.width, im.height));
+/* Compress to WebP safely (prevents quota errors) */
+function loadImgBlob(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
+async function downscaleToWebP(dataURL, targetShort){
+  const im = await loadImgBlob(dataURL);
+  const short = Math.min(im.width, im.height);
+  const scale = Math.min(1, targetShort/short);
   const w = Math.max(180, Math.round(im.width*scale));
   const h = Math.max(180, Math.round(im.height*scale));
   const c = document.createElement('canvas'); c.width=w; c.height=h;
@@ -385,9 +369,8 @@ async function downscaleToWebP(dataURL, shortSidePx){
   return out;
 }
 
-/* ===================== boot ===================== */
-fillLegends();
-drawDOM();
+/* ===================== GO ===================== */
+resize(); // initial draw
 </script>
 </body>
 </html>
