@@ -5,30 +5,51 @@
 <title>GOLDEN MILLION — Get in now, be remembered beside legends.</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <style>
-  :root{ --bg:#fff; --ink:#111; --muted:#6b7280; --line:#eceff3; --outline:#d4d9e2; --overlay:rgba(0,0,0,.45); }
+  :root{
+    --bg:#fff; --ink:#111; --muted:#6b7280; --grid:#e6e9ef; --tile:#222; --overlay:rgba(0,0,0,.5);
+  }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
   header{position:fixed;inset:0 0 auto 0;z-index:20;display:flex;justify-content:center;padding:8px 12px;pointer-events:none}
   .cta{pointer-events:auto;display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.96);border:1px solid #e7ebf2;border-radius:999px;padding:8px 14px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
   .dot{width:10px;height:10px;border-radius:50%;background:radial-gradient(#ffd24d,#e1b526)}
   .cta b{font-weight:800}.cta span{color:var(--muted)}
-  #field{position:fixed;inset:0;display:block;cursor:grab}
-  #field:active{cursor:grabbing}
-
-  .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:50}
+  /* Stage + world (zoom/pan) */
+  #stage{position:fixed;inset:0;overflow:hidden;background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 32px 32px, 32px 32px;  /* видимая «миллионная» сетка */
+  }
+  #world{position:absolute; left:0; top:0; transform-origin:0 0; cursor:grab}
+  #world.dragging{cursor:grabbing}
+  /* Tile = одна «клетка» мозаики */
+  .tile{
+    position:absolute; border:2px solid var(--tile); background:#fff; overflow:hidden; border-radius:2px;
+  }
+  .tile img{width:100%; height:100%; object-fit:cover; display:block}
+  .tile .caption{
+    position:absolute; left:0; right:0; bottom:0;
+    background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.55));
+    color:#fff; font-size:12px; padding:6px 8px; line-height:1.2;
+    display:flex; justify-content:space-between; gap:8px;
+  }
+  .tile .caption b{font-weight:700}
+  /* Overlays / modals */
+  .overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:var(--overlay); z-index:50}
   .overlay.on{display:flex}
-  .card{width:min(720px,92vw);background:#fff;border:1px solid #e7ebf2;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25);padding:16px;animation:pop .26s ease-out both}
+  .card{width:min(760px,92vw); background:#fff; border:1px solid #e7ebf2; border-radius:16px; padding:16px; box-shadow:0 18px 60px rgba(0,0,0,.35); animation:pop .22s ease-out both}
   @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
-  .title{margin:0 0 6px 0;font-weight:800;letter-spacing:.3px}
-  .sub{margin:0 0 12px 0;color:var(--muted)}
-  .row{display:flex;gap:12px;flex-wrap:wrap}.col{flex:1 1 280px}
-  .drop{min-height:140px;border:1px dashed #cfd3da;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#666;padding:10px;text-align:center;background:#fafafa;cursor:pointer}
-  .thumb{max-width:100%;max-height:340px;border-radius:12px;border:1px solid #e7ebf2;display:block}
-  .input{width:100%;padding:10px 12px;border:1px solid #e7ebf2;border-radius:10px}
-  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-  .btn{appearance:none;border:1px solid #e7ebf2;background:#fff;color:#111;padding:8px 12px;border-radius:10px;cursor:pointer}
-  .btn.primary{border-color:#111;background:#111;color:#fff}
-  .mini{font-size:12px;color:#666}
+  .title{margin:0 0 8px 0; font-weight:800}
+  .sub{margin:0 0 12px 0; color:var(--muted)}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .col{flex:1 1 280px}
+  .drop{min-height:160px; border:1px dashed #cfd3da; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#666; background:#fafafa; cursor:pointer}
+  .thumb{max-width:100%; max-height:340px; border-radius:12px; border:1px solid #e7ebf2; display:block}
+  .input{width:100%; padding:10px 12px; border:1px solid #e7ebf2; border-radius:10px}
+  .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
+  .btn{appearance:none; border:1px solid #e7ebf2; background:#fff; color:#111; padding:8px 12px; border-radius:10px; cursor:pointer}
+  .btn.primary{border-color:#111; background:#111; color:#fff}
+  .mini{font-size:12px; color:#666}
 </style>
 </head>
 <body>
@@ -36,9 +57,11 @@
   <div class="cta"><div class="dot"></div><b>GOLDEN MILLION</b><span>Get in now — be remembered beside legends.</span></div>
 </header>
 
-<canvas id="field"></canvas>
+<div id="stage">
+  <div id="world"></div>
+</div>
 
-<!-- VIEW (occupied) -->
+<!-- View modal -->
 <div class="overlay" id="viewOverlay">
   <div class="card">
     <h3 class="title" id="viewTitle">Legend</h3>
@@ -48,7 +71,7 @@
   </div>
 </div>
 
-<!-- ADD (free) -->
+<!-- Add modal -->
 <div class="overlay" id="addOverlay">
   <div class="card">
     <h3 class="title">Claim your golden spot — $1 / year (test mode)</h3>
@@ -59,12 +82,12 @@
           <input type="file" id="file" accept="image/*" style="display:none">
           <span id="dropText">Drop an image here (or click)</span>
         </div>
-        <img id="preview" class="thumb" alt="" style="display:none;margin-top:8px">
+        <img id="preview" class="thumb" alt="" style="display:none; margin-top:8px">
       </div>
       <div class="col">
         <label class="sub" for="desc">Your short line (max 80 chars)</label>
         <input class="input" id="desc" maxlength="80" placeholder="I was here. 2025.">
-        <p class="mini">The wall is made of 1,000,000 cells. Tiles have different sizes — explore with zoom.</p>
+        <p class="mini">Tiles have different sizes. Double-click a tile to zoom to it; drag to pan, wheel to zoom.</p>
       </div>
     </div>
     <div class="actions"><button class="btn" id="addCancel">Cancel</button><button class="btn primary" id="addSave">Save (test)</button></div>
@@ -72,298 +95,222 @@
 </div>
 
 <script>
-/* =========================================================
-   CLEAN MOSAIC VERSION
-   - Background: 1,000,000 microcells (1000×1000) — visible сразу
-   - Variable-size tiles (rectangles), nice rounded corners
-   - Top-100 largest tiles prefilled with “legends” (no Putin)
-   - Local save (WebP compress) + Zoom/Pan
-   ========================================================= */
+/* ======================= core config ======================= */
+const CELLS_X = 1000, CELLS_Y = 1000;        // «миллион» фоновых ячеек (визуально — сетка)
+const WORLD_W = 8000, WORLD_H = 4800;        // размер «стены» в px (до масштабирования)
+const TILES_COUNT = 1000;                    // прямоугольников в мозаике
+const LEGENDS_COUNT = 100;                   // топ-100 самых больших под легенды
+const SEED = 1337;                           // фиксированный seed для стабильной мозаики
 
-/* ---------- Canvas & world ---------- */
-const CAN = document.getElementById('field');
-const CTX = CAN.getContext('2d', { alpha:false });
-let DPR = Math.max(1, window.devicePixelRatio || 1);
+/* ==================== util (seeded random) ==================== */
+let _seed = SEED>>>0;
+function srand(){ _seed = (_seed*1664525 + 1013904223)>>>0; return _seed/4294967296; }
+function randInt(a,b){ return Math.floor(a + srand()*(b-a+1)); }
 
-const CELLS_X = 1000, CELLS_Y = 1000;   // 1e6
-const CELL = 8;                         // world px per cell (before scaling)
-const WORLD = { w: CELLS_X*CELL, h: CELLS_Y*CELL };
-
-let W=0,H=0, scale=0.15, offX=0, offY=0;
-
-function fit(){
-  W = CAN.width = Math.floor(window.innerWidth * DPR);
-  H = CAN.height = Math.floor(window.innerHeight * DPR);
-  CAN.style.width = window.innerWidth+'px'; CAN.style.height = window.innerHeight+'px';
-  const sFit = Math.min(W/WORLD.w, H/WORLD.h);
-  if (!fit._done){ scale = sFit * 1.02; offX = (W - WORLD.w*scale)/2; offY = (H - WORLD.h*scale)/2; fit._done = true; }
-  draw();
-}
-window.addEventListener('resize', fit);
-
-const clamp = (n,a,b)=> Math.max(a, Math.min(b,n));
-function worldToScreen(wx,wy){ return [(wx*scale + offX), (wy*scale + offY)]; }
-function screenToWorld(sx,sy){ return [(sx - offX)/scale, (sy - offY)/scale]; }
-
-/* ---------- Random tiling into 1000 rectangles of different sizes ---------- */
-function randInt(a,b){ return Math.floor(a + Math.random()*(b-a+1)); }
-function makeRect(x,y,w,h){ return {x,y,w,h, area:w*h, id:0}; }
-
-function splitRect(r){
-  // split by longer side, but keep margins so pieces не получаются иголками
-  const horiz = r.w >= r.h ? true : false;
+/* ===================== build random tiling ===================== */
+function rect(x,y,w,h){ return {x,y,w,h, area:w*h, id:0}; }
+function splitOne(r){
+  // сплитим вдоль длинной стороны, но не по центру и с минимальными полями
+  const horiz = r.w >= r.h;
   if (horiz){
-    const min = Math.max(20*CELL, Math.floor(r.w*0.35));
-    const max = Math.min(r.w-20*CELL, Math.floor(r.w*0.65));
-    if (max <= min) return [r];
+    const min = Math.max(80, Math.floor(r.w*0.32));
+    const max = Math.min(r.w-80, Math.floor(r.w*0.68));
+    if (max<=min) return [r];
     const cut = randInt(min,max);
-    return [ makeRect(r.x, r.y, cut, r.h), makeRect(r.x+cut, r.y, r.w-cut, r.h) ];
+    return [ rect(r.x, r.y, cut, r.h), rect(r.x+cut, r.y, r.w-cut, r.h) ];
   } else {
-    const min = Math.max(20*CELL, Math.floor(r.h*0.35));
-    const max = Math.min(r.h-20*CELL, Math.floor(r.h*0.65));
-    if (max <= min) return [r];
+    const min = Math.max(80, Math.floor(r.h*0.32));
+    const max = Math.min(r.h-80, Math.floor(r.h*0.68));
+    if (max<=min) return [r];
     const cut = randInt(min,max);
-    return [ makeRect(r.x, r.y, r.w, cut), makeRect(r.x, r.y+cut, r.w, r.h-cut) ];
+    return [ rect(r.x, r.y, r.w, cut), rect(r.x, r.y+cut, r.w, r.h-cut) ];
   }
 }
-
-function buildLayout(target){
-  const list = [ makeRect(0,0, WORLD.w, WORLD.h) ];
-  while (list.length < target){
-    // берём самый большой прямоугольник, который ещё можно делить
+function buildTiling(n){
+  const list = [ rect(0,0, WORLD_W, WORLD_H) ];
+  while (list.length < n){
+    // выбираем самый большой, который ещё можно резать
     let idx=-1, best=-1;
     for (let i=0;i<list.length;i++){
       const r = list[i];
-      if (r.w > 40*CELL && r.h > 40*CELL && r.area > best){ best=r.area; idx=i; }
+      if ((r.w>160 && r.h>160) && r.area>best){ best=r.area; idx=i; }
     }
-    if (idx === -1) break;
+    if (idx===-1) break;
     const r = list.splice(idx,1)[0];
-    const [a,b] = splitRect(r);
+    const [a,b] = splitOne(r);
     if (b){ a.area=a.w*a.h; b.area=b.w*b.h; list.push(a,b); } else list.push(r);
   }
-  // ещё немного разнообразия — делим слишком длинные
+  // убираем чересчур вытянутые доп.сплитом
   for (let k=0;k<list.length;k++){
-    const r = list[k], aspect = r.w/r.h;
-    if (aspect > 2.4 || aspect < 0.42){
-      const pair = splitRect(r);
+    const r = list[k], asp=r.w/r.h;
+    if (asp>2.6 || asp<0.4){
+      const pair = splitOne(r);
       if (pair.length===2){ list.splice(k,1,pair[0],pair[1]); k--; }
     }
   }
-  // доводим до нужного количества
-  while (list.length > target) list.pop();
+  while(list.length>n) list.pop();
   list.forEach((r,i)=> r.id=i);
   return list;
 }
+const layout = buildTiling(TILES_COUNT);
 
-let layout = buildLayout(1000); // 1000 плиток заметно разных размеров
+/* ======================= legends dataset ======================= */
+const LEGEND_PHOTOS = {
+  "Napoleon Bonaparte":"https://upload.wikimedia.org/wikipedia/commons/5/50/Napoleon_Bonaparte_by_Jean-Auguste-Dominique_Ingres%2C_1806.jpg",
+  "Donald Trump":"https://upload.wikimedia.org/wikipedia/commons/5/56/Donald_Trump_official_portrait.jpg",
+  "Volodymyr Zelenskyy":"https://upload.wikimedia.org/wikipedia/commons/2/2e/Volodymyr_Zelensky_Official_portrait.jpg",
+  "Elon Musk":"https://upload.wikimedia.org/wikipedia/commons/4/49/Elon_Musk_2015.jpg",
+  "George Washington":"https://upload.wikimedia.org/wikipedia/commons/6/6f/George_Washington_by_Gilbert_Stuart%2C_1797.jpg",
+  "Abraham Lincoln":"https://upload.wikimedia.org/wikipedia/commons/a/a4/Abraham_Lincoln_O-116_by_Gardner%2C_1865-crop.png",
+  "Albert Einstein":"https://upload.wikimedia.org/wikipedia/commons/d/d3/Albert_Einstein_Head.jpg",
+  "Leonardo da Vinci":"https://upload.wikimedia.org/wikipedia/commons/6/6d/Leonardo_self.jpg",
+  "Marie Curie":"https://upload.wikimedia.org/wikipedia/commons/7/7e/Marie_Curie_c1920.jpg",
+  "Nikola Tesla":"https://upload.wikimedia.org/wikipedia/commons/d/d4/N.Tesla.JPG",
+  "Mahatma Gandhi":"https://upload.wikimedia.org/wikipedia/commons/d/d1/Portrait_Gandhi.jpg",
+  "Martin Luther King Jr.":"https://upload.wikimedia.org/wikipedia/commons/a/a3/Martin_Luther_King_Jr_NYWTS_6.jpg",
+  "Winston Churchill":"https://upload.wikimedia.org/wikipedia/commons/1/1e/Sir_Winston_Churchill_-_19086236948.jpg",
+  "Cleopatra":"https://upload.wikimedia.org/wikipedia/commons/2/2b/Cleopatra_VII_%28Altes_Museum%29.jpg",
+  "Steve Jobs":"https://upload.wikimedia.org/wikipedia/commons/8/80/Steve_Jobs_Headshot_2010-CROP2.jpg",
+  "Bill Gates":"https://upload.wikimedia.org/wikipedia/commons/a/a0/Bill_Gates_2018.jpg",
+  "Jeff Bezos":"https://upload.wikimedia.org/wikipedia/commons/3/35/Jeff_Bezos_cropped.jpg",
+  "Barack Obama":"https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg",
+  "Joe Biden":"https://upload.wikimedia.org/wikipedia/commons/6/68/Joe_Biden_presidential_portrait.jpg",
+  "Angela Merkel":"https://upload.wikimedia.org/wikipedia/commons/b/bb/Angela_Merkel_Juli_2010_-_3zu4.jpg"
+  // остальные легенды автоматически получат аватар-инициалы
+};
+const LEGEND_NAMES = Object.keys(LEGEND_PHOTOS).concat([
+  "Nelson Mandela","Julius Caesar","Pablo Picasso","Vincent van Gogh","Michelangelo",
+  "Ada Lovelace","Alan Turing","Grace Hopper","Katherine Johnson","Hedy Lamarr",
+  "Charles Darwin","Carl Sagan","Johannes Kepler","Niels Bohr","William Shakespeare",
+  "Homer","Dante Alighieri","Johann Sebastian Bach","Ludwig van Beethoven","Wolfgang Amadeus Mozart",
+  "Leo Tolstoy","Fyodor Dostoevsky","Ernest Hemingway","Agatha Christie","Serena Williams",
+  "Michael Jordan","Kobe Bryant","Lionel Messi","Cristiano Ronaldo","Pelé",
+  "Usain Bolt","Bruce Lee","Jackie Chan","Hayao Miyazaki","Akira Kurosawa",
+  "Steven Spielberg","George Lucas","Quentin Tarantino","James Cameron","Mother Teresa",
+  "Florence Nightingale","Yayoi Kusama","Banksy","Salvador Dalí","Socrates",
+  "Plato","Aristotle","Confucius","Sun Tzu","Genghis Khan",
+  "Alexander the Great","Queen Elizabeth II","Joan of Arc","Catherine the Great","Sheryl Sandberg",
+  "Satya Nadella","Sundar Pichai","Tim Cook","Susan Wojcicki","Desmond Tutu",
+  "Lech Wałęsa","Václav Havel","Stephen Hawking","Jane Goodall","Neil Armstrong",
+  "Yuri Gagarin","Amelia Earhart","J.R.R. Tolkien","George R. R. Martin","J.K. Rowling",
+  "Haruki Murakami","Gabriel García Márquez","Oprah Winfrey","Greta Thunberg","Galileo Galilei"
+]).slice(0,LEGENDS_COUNT);
 
-/* ---------- Local storage of claims ---------- */
-const LS_KEY = "gm_claims_v5";
-let claims = {};  // id -> {img,name,desc,legend}
+/* ============= local storage for user images ============= */
+const LS_KEY = "gm_rect_claims_v1";
+let claims = {}; // rectId -> {img, name, desc, legend?}
 try{ claims = JSON.parse(localStorage.getItem(LS_KEY)||"{}"); }catch(e){ claims = {}; }
 function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){ alert("Storage quota exceeded. Try a smaller image."); }}
 
-/* ---------- Legends in the largest 100 rectangles ---------- */
-const LEGEND_NAMES = [
-  "Abraham Lincoln","Nelson Mandela","Mahatma Gandhi","Martin Luther King Jr.","Winston Churchill",
-  "Volodymyr Zelenskyy","George Washington","Napoleon Bonaparte","Julius Caesar","Cleopatra",
-  "Leonardo da Vinci","Michelangelo","Vincent van Gogh","Pablo Picasso","Frida Kahlo",
-  "Albert Einstein","Isaac Newton","Galileo Galilei","Nikola Tesla","Marie Curie",
-  "Ada Lovelace","Alan Turing","Grace Hopper","Katherine Johnson","Hedy Lamarr",
-  "Charles Darwin","Carl Sagan","Richard Feynman","Johannes Kepler","Niels Bohr",
-  "William Shakespeare","Homer","Dante Alighieri","Johann S. Bach","Ludwig van Beethoven",
-  "Wolfgang A. Mozart","Leo Tolstoy","Fyodor Dostoevsky","Ernest Hemingway","Agatha Christie",
-  "Elon Musk","Steve Jobs","Bill Gates","Jeff Bezos","Warren Buffett",
-  "Donald Trump","Barack Obama","Joe Biden","Angela Merkel","Emmanuel Macron",
-  "Serena Williams","Michael Jordan","Kobe Bryant","Lionel Messi","Cristiano Ronaldo",
-  "Pelé","Usain Bolt","Bruce Lee","Jackie Chan","Hayao Miyazaki",
-  "Akira Kurosawa","Steven Spielberg","George Lucas","Quentin Tarantino","James Cameron",
-  "Mother Teresa","Florence Nightingale","Yayoi Kusama","Banksy","Salvador Dalí",
-  "Socrates","Plato","Aristotle","Confucius","Sun Tzu",
-  "Genghis Khan","Alexander the Great","Queen Elizabeth II","Joan of Arc","Catherine the Great",
-  "Sheryl Sandberg","Satya Nadella","Sundar Pichai","Tim Cook","Susan Wojcicki",
-  "Desmond Tutu","Lech Wałęsa","Václav Havel","Stephen Hawking","Jane Goodall",
-  "Neil Armstrong","Yuri Gagarin","Amelia Earhart","J.R.R. Tolkien","George R. R. Martin",
-  "J.K. Rowling","Haruki Murakami","Gabriel García Márquez","Oprah Winfrey","Greta Thunberg"
-]; // 100
+/* ============== render HTML rectangles (no canvas) ============== */
+const world = document.getElementById('world');
+world.style.width = WORLD_W + 'px';
+world.style.height = WORLD_H + 'px';
 
-function svgPortrait(name){
-  const initials = name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
-  const esc = s=>encodeURIComponent(s);
-  const svg =
-`<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'>
-  <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
-    <stop offset='0%' stop-color='#f9e9a3'/><stop offset='50%' stop-color='#f0d16a'/><stop offset='100%' stop-color='#cda434'/>
-  </linearGradient></defs>
-  <rect width='100%' height='100%' fill='url(#g)'/>
-  <circle cx='450' cy='360' r='200' fill='rgba(255,255,255,.22)'/>
-  <text x='450' y='410' font-family='system-ui,Arial' font-size='170' text-anchor='middle' fill='#222' font-weight='800'>${initials}</text>
-  <text x='450' y='780' font-family='system-ui,Arial' font-size='48' text-anchor='middle' fill='#222' font-weight='700'>${name.replace(/&/g,"&amp;")}</text>
-</svg>`;
-  return "data:image/svg+xml;utf8,"+esc(svg);
+function initialsAvatar(name,w,h){
+  const init = name.split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
+  const svg = `
+  <svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
+    <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
+      <stop offset='0%' stop-color='#fff2b2'/><stop offset='100%' stop-color='#e4c45e'/>
+    </linearGradient></defs>
+    <rect width='100%' height='100%' fill='url(#g)'/>
+    <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
+          font-family='system-ui,Arial' font-size='${Math.floor(Math.min(w,h)*0.35)}'
+          font-weight='800' fill='#111'>${init}</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 }
 
-// проставляем легенд только один раз
-(function prefillLegends(){
-  const already = Object.values(claims).filter(v=>v && v.legend).length;
-  if (already >= LEGEND_NAMES.length){
-    return;
+function fillLegends(){
+  // выбрать 100 самых больших прямоугольников
+  const sorted = [...layout].sort((a,b)=>b.area-a.area).slice(0, LEGENDS_COUNT);
+  for (let i=0;i<sorted.length;i++){
+    const r = sorted[i];
+    if (claims[r.id] && claims[r.id].legend) continue;
+    const name = LEGEND_NAMES[i] || "Legend";
+    const url = LEGEND_PHOTOS[name];
+    claims[r.id] = {
+      img: url || initialsAvatar(name, Math.max(200,Math.floor(r.w)), Math.max(200,Math.floor(r.h))),
+      name, desc: "Part of the Golden Million.", legend:true
+    };
   }
-  const sorted = [...layout].sort((a,b)=>b.area-a.area).slice(0, LEGEND_NAMES.length);
-  sorted.forEach((r,i)=>{
-    const nm = LEGEND_NAMES[i];
-    if (!claims[r.id]) claims[r.id] = { img: svgPortrait(nm), name: nm, desc:"Part of the Golden Million.", legend:true };
-  });
   persist();
-})();
-
-/* ---------- Draw helpers ---------- */
-const imgCache = new Map();
-function loadImg(src){
-  if (imgCache.has(src)) return imgCache.get(src);
-  const p = new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>res(im); im.onerror=rej; im.src=src; });
-  imgCache.set(src,p); return p;
-}
-async function drawImageCover(src,x,y,w,h){
-  try{
-    const im = await loadImg(src);
-    const r = Math.max(w/im.width, h/im.height);
-    const iw = im.width*r, ih = im.height*r;
-    const ix = x + (w - iw)/2, iy = y + (h - ih)/2;
-    CTX.fillStyle="#fff"; CTX.fillRect(x,y,w,h);
-    CTX.drawImage(im, ix, iy, iw, ih);
-  }catch(e){}
 }
 
-function roundedRectPath(x,y,w,h,r=10){
-  const rr = Math.min(r, w*0.12, h*0.12);
-  CTX.beginPath();
-  CTX.moveTo(x+rr,y);
-  CTX.lineTo(x+w-rr,y); CTX.quadraticCurveTo(x+w,y,x+w,y+rr);
-  CTX.lineTo(x+w,y+h-rr); CTX.quadraticCurveTo(x+w,y+h,x+w-rr,y+h);
-  CTX.lineTo(x+rr,y+h); CTX.quadraticCurveTo(x,y+h,x,y+h-rr);
-  CTX.lineTo(x,y+rr); CTX.quadraticCurveTo(x,y,x+rr,y);
-  CTX.closePath();
-}
-
-/* ---------- Drawing ---------- */
-function draw(){
-  CTX.setTransform(1,0,0,1,0,0);
-  CTX.fillStyle="#fff"; CTX.fillRect(0,0,W,H);
-
-  // 1) Глобальная сетка 1e6 — лёгкие линии
-  const [wx0, wy0] = screenToWorld(0,0);
-  const [wx1, wy1] = screenToWorld(W,H);
-  const c0x = clamp(Math.floor(wx0/CELL)-2, 0, CELLS_X-1);
-  const c0y = clamp(Math.floor(wy0/CELL)-2, 0, CELLS_Y-1);
-  const c1x = clamp(Math.floor(wx1/CELL)+2, 0, CELLS_X-1);
-  const c1y = clamp(Math.floor(wy1/CELL)+2, 0, CELLS_Y-1);
-
-  CTX.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line').trim() || '#eceff3';
-  CTX.lineWidth = Math.max(1, 0.5*DPR);
-  CTX.beginPath();
-  for(let y=c0y; y<=c1y; y++){
-    const [sx0, sy] = worldToScreen(c0x*CELL, y*CELL);
-    const [sx1, ]  = worldToScreen((c1x+1)*CELL, y*CELL);
-    CTX.moveTo(sx0,sy); CTX.lineTo(sx1,sy);
-  }
-  for(let x=c0x; x<=c1x; x++){
-    const [sx, sy0] = worldToScreen(x*CELL, c0y*CELL);
-    const [, sy1]   = worldToScreen(x*CELL, (c1y+1)*CELL);
-    CTX.moveTo(sx,sy0); CTX.lineTo(sx,sy1);
-  }
-  CTX.stroke();
-
-  // 2) Плитки (разные размеры)
+function drawDOM(){
+  world.innerHTML = '';
   for (const r of layout){
-    if (r.x + r.w < wx0 || r.y + r.h < wy0 || r.x > wx1 || r.y > wy1) continue;
-    const [sx, sy] = worldToScreen(r.x, r.y);
-    const sw = r.w*scale, sh = r.h*scale;
-
-    // контент если занят
+    const d = document.createElement('div');
+    d.className = 'tile';
+    d.style.left = r.x + 'px';
+    d.style.top = r.y + 'px';
+    d.style.width = r.w + 'px';
+    d.style.height = r.h + 'px';
+    d.dataset.id = r.id;
     const claim = claims[r.id];
     if (claim){
-      CTX.save();
-      roundedRectPath(sx, sy, sw, sh, 10*scale);
-      CTX.clip();
-      awaitOrQueue(drawImageCover(claim.img, sx, sy, sw, sh));
-      CTX.restore();
+      const img = document.createElement('img');
+      img.alt = claim.name || 'Member';
+      img.src = claim.img;
+      img.referrerPolicy = 'no-referrer';
+      img.onerror = ()=>{ img.src = initialsAvatar(claim.name||'Member', Math.max(200,Math.floor(r.w)), Math.max(200,Math.floor(r.h))); };
+      d.appendChild(img);
+
+      const cap = document.createElement('div'); cap.className='caption';
+      const left = document.createElement('b'); left.textContent = (claim.name||'Member');
+      const right = document.createElement('span'); right.textContent = (claim.desc||'');
+      cap.appendChild(left); cap.appendChild(right);
+      d.appendChild(cap);
     }
-
-    // аккуратный контур
-    CTX.save();
-    CTX.lineWidth = Math.max(1, 0.7*DPR);
-    CTX.strokeStyle = 'var(--outline)';
-    roundedRectPath(sx, sy, sw, sh, 10*scale);
-    CTX.stroke();
-    CTX.restore();
+    d.addEventListener('click', onTileClick);
+    world.appendChild(d);
   }
 }
 
-let drawQueue = Promise.resolve();
-function awaitOrQueue(p){ drawQueue = drawQueue.then(()=>p).catch(()=>{}); }
+/* ============== interactions: zoom/pan/click ============== */
+let scale = 1, offsetX = 0, offsetY = 0;
+(function initTransform(){
+  const sFit = Math.min(window.innerWidth / WORLD_W, window.innerHeight / WORLD_H);
+  scale = sFit * 1.02;
+  setTransform();
+})();
+function setTransform(){ world.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`; }
 
-/* ---------- Hit testing ---------- */
-function hitTest(clientX, clientY){
-  const sx = clientX * DPR, sy = clientY * DPR;
-  for (let i=layout.length-1; i>=0; i--){
-    const r = layout[i];
-    const [x,y] = worldToScreen(r.x, r.y);
-    const w = r.w*scale, h = r.h*scale;
-    if (sx>=x && sy>=y && sx<=x+w && sy<=y+h) return r;
-  }
-  return null;
-}
-
-/* ---------- Interactions (pan/zoom/click) ---------- */
-let dragging=false, sX=0, sY=0, oX=0, oY=0;
-CAN.addEventListener('mousedown',e=>{ dragging=true; sX=e.clientX; sY=e.clientY; oX=offX; oY=offY; });
-window.addEventListener('mouseup',()=> dragging=false);
-window.addEventListener('mousemove',e=>{ if(dragging){ offX = oX + (e.clientX - sX)*DPR; offY = oY + (e.clientY - sY)*DPR; draw(); }});
-CAN.addEventListener('wheel',e=>{
+let dragging=false, sx=0, sy=0, ox=0, oy=0;
+world.addEventListener('mousedown', e=>{ dragging=true; world.classList.add('dragging'); sx=e.clientX; sy=e.clientY; ox=offsetX; oy=offsetY; });
+window.addEventListener('mouseup', ()=>{ dragging=false; world.classList.remove('dragging'); });
+window.addEventListener('mousemove', e=>{ if(!dragging) return; offsetX = ox + (e.clientX - sx); offsetY = oy + (e.clientY - sy); setTransform(); });
+document.getElementById('stage').addEventListener('wheel', e=>{
   e.preventDefault();
-  const delta = Math.sign(e.deltaY)*-0.08;
-  const rect = CAN.getBoundingClientRect();
-  const cx = (e.clientX-rect.left)*DPR, cy=(e.clientY-rect.top)*DPR;
-  const [wx,wy] = screenToWorld(cx,cy);
-  scale = clamp(scale+delta, 0.06, 3);
-  offX = cx - wx*scale; offY = cy - wy*scale;
-  draw();
+  const rect = world.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const delta = Math.sign(e.deltaY) * -0.08;
+  const ns = Math.min(3, Math.max(0.08, scale + delta));
+  // масштаб относительно точки под курсором
+  offsetX = e.clientX - (cx * ns);
+  offsetY = e.clientY - (cy * ns);
+  scale = ns; setTransform();
 },{passive:false});
 
-CAN.addEventListener('dblclick',(e)=>{ // быстрый зум к плитке
-  const r = hitTest(e.clientX, e.clientY); if (!r) return;
-  const [cx, cy] = worldToScreen(r.x + r.w/2, r.y + r.h/2);
-  const targetScale = clamp(Math.min(W/(r.w*CELL), H/(r.h*CELL)) * 0.6, 0.2, 2.5);
-  scale = targetScale;
-  offX = W/2 - (r.x + r.w/2)*scale;
-  offY = H/2 - (r.y + r.h/2)*scale;
-  draw();
+document.getElementById('stage').addEventListener('dblclick', e=>{
+  const el = e.target.closest('.tile'); if(!el) return;
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  const ns = Math.min(2.2, Math.max(0.3, Math.min(window.innerWidth/r.width, window.innerHeight/r.height) * 0.7));
+  offsetX = window.innerWidth/2 - (cx - offsetX) * (ns/scale);
+  offsetY = window.innerHeight/2 - (cy - offsetY) * (ns/scale);
+  scale = ns; setTransform();
 });
 
-CAN.addEventListener('click',(e)=>{
-  const r = hitTest(e.clientX, e.clientY);
-  if (!r) return;
-  const claim = claims[r.id];
-  if (claim) openView(claim); else openAdd(r);
-});
-
-/* ---------- View modal ---------- */
+/* =================== modals: view / add =================== */
 const viewOverlay = document.getElementById('viewOverlay');
 const viewImg = document.getElementById('viewImg');
 const viewTitle = document.getElementById('viewTitle');
 const viewSub = document.getElementById('viewSub');
 document.getElementById('viewClose').onclick = ()=> viewOverlay.classList.remove('on');
-viewOverlay.addEventListener('click',e=>{ if(e.target===viewOverlay) viewOverlay.classList.remove('on'); });
+viewOverlay.addEventListener('click', e=>{ if(e.target===viewOverlay) viewOverlay.classList.remove('on'); });
 
-function openView(rec){
-  viewTitle.textContent = rec.name || "Member of the Golden Million";
-  viewSub.textContent = rec.desc || "“A short line for history.”";
-  viewImg.src = rec.img;
-  viewOverlay.classList.add('on');
-}
-
-/* ---------- Add modal ---------- */
 const addOverlay = document.getElementById('addOverlay');
 const addCancel  = document.getElementById('addCancel');
 const addSave    = document.getElementById('addSave');
@@ -372,61 +319,75 @@ const file       = document.getElementById('file');
 const preview    = document.getElementById('preview');
 const dropText   = document.getElementById('dropText');
 const desc       = document.getElementById('desc');
-let addRect = null;
+let addRectId = null;
+
+function onTileClick(e){
+  const el = e.currentTarget;
+  const id = +el.dataset.id;
+  const claim = claims[id];
+  if (claim){
+    viewTitle.textContent = claim.name || 'Member of the Golden Million';
+    viewSub.textContent = claim.desc || '“A short line for history.”';
+    viewImg.src = claim.img;
+    viewOverlay.classList.add('on');
+  } else {
+    addRectId = id;
+    preview.style.display='none'; preview.src=''; dropText.textContent='Drop an image here (or click)'; desc.value='';
+    addOverlay.classList.add('on');
+  }
+}
 
 drop.addEventListener('click', ()=> file.click());
-drop.addEventListener('dragover',e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
-drop.addEventListener('dragleave',()=>{ drop.style.borderColor="#cfd3da"; });
-drop.addEventListener('drop',e=>{
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
+drop.addEventListener('dragleave', ()=>{ drop.style.borderColor="#cfd3da"; });
+drop.addEventListener('drop', e=>{
   e.preventDefault(); drop.style.borderColor="#cfd3da";
   if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
-file.addEventListener('change',e=>{ if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
+file.addEventListener('change', e=>{ if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(f){
-  if(!/^image\//.test(f.type)) return alert("Please choose an image");
-  const r=new FileReader();
-  r.onload=()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent="Image selected"; };
+  if (!/^image\//.test(f.type)) return alert('Please choose an image');
+  const r = new FileReader();
+  r.onload = ()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent='Image selected'; };
   r.readAsDataURL(f);
 }
 
 addCancel.onclick = ()=> addOverlay.classList.remove('on');
-addOverlay.addEventListener('click',e=>{ if(e.target===addOverlay) addOverlay.classList.remove('on'); });
-
-function openAdd(r){
-  addRect = r;
-  preview.style.display='none'; preview.src=''; dropText.textContent="Drop an image here (or click)";
-  desc.value="";
-  addOverlay.classList.add('on');
-}
+addOverlay.addEventListener('click', e=>{ if(e.target===addOverlay) addOverlay.classList.remove('on'); });
 
 addSave.onclick = async ()=>{
-  if (!addRect) return;
-  if (!preview.src) return alert("Please add an image first.");
-  const compressed = await downscaleToWebP(preview.src, Math.min(addRect.w, addRect.h));
-  claims[addRect.id] = { img: compressed, name:"Golden Million Member", desc:(desc.value||"I was here.").slice(0,80) };
+  if (addRectId==null) return;
+  if (!preview.src) return alert('Please add an image first.');
+  const r = layout.find(x=>x.id===addRectId);
+  const compressed = await downscaleToWebP(preview.src, Math.min(r.w, r.h));
+  claims[addRectId] = { img: compressed, name:'Golden Million Member', desc:(desc.value||'I was here.').slice(0,80) };
   persist();
   addOverlay.classList.remove('on');
-  draw();
+  drawDOM();
 };
 
-/* Downscale to WebP proportional to tile size */
-async function downscaleToWebP(dataURL, tileShortSidePx){
-  const img = await loadImg(dataURL);
-  const base = Math.max(220, Math.round(tileShortSidePx * 0.9));
-  const scale = Math.min(1, base / Math.min(img.width, img.height));
-  const w = Math.max(120, Math.round(img.width * scale));
-  const h = Math.max(120, Math.round(img.height * scale));
+/* ======= downscale to WebP to avoid storage quota ======= */
+function loadImg(src){
+  return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; });
+}
+async function downscaleToWebP(dataURL, shortSidePx){
+  const im = await loadImg(dataURL);
+  const target = Math.max(260, Math.round(shortSidePx*0.9));
+  const scale = Math.min(1, target / Math.min(im.width, im.height));
+  const w = Math.max(180, Math.round(im.width*scale));
+  const h = Math.max(180, Math.round(im.height*scale));
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const g = c.getContext('2d'); g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
-  g.drawImage(img, 0,0,w,h);
-  let out = c.toDataURL('image/webp', 0.85);
-  if (out.length > 4_500_000) out = c.toDataURL('image/jpeg', 0.85);
+  g.drawImage(im, 0,0,w,h);
+  let out = c.toDataURL('image/webp', 0.86);
+  if (out.length > 4_500_000) out = c.toDataURL('image/jpeg', 0.86);
   return out;
 }
 
-/* ---------- Init ---------- */
-fit(); draw();
+/* ===================== boot ===================== */
+fillLegends();
+drawDOM();
 </script>
 </body>
 </html>
