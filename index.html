@@ -1,604 +1,269 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>Million Mosaic — 1 000 000 ячеек по $1</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<title>Million Mosaic — Plain</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root{
-    --bg:#0a1222; --panel:#0f1a33; --ink:#eaf2ff; --muted:#98a4c5; --brand:#ffd33b; --ok:#37d67a; --bad:#ff5a5f; --line:rgba(255,255,255,.12);
+  /* Page: pure white, no UI */
+  html, body { margin:0; padding:0; height:100%; background:#fff; }
+  #field { display:block; width:100vw; height:100vh; cursor:crosshair; }
+
+  /* Modal (minimal) */
+  .overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.4);
+    display:none; align-items:center; justify-content:center;
   }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:radial-gradient(1200px 700px at 50% 0%,#102044,#0c1734 50%,#0a1222);color:var(--ink);font:14px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
-  header{
-    position:fixed;inset:0 0 auto 0;display:flex;align-items:center;gap:12px;
-    padding:10px 14px;background:linear-gradient(to bottom,rgba(10,18,34,.9),rgba(10,18,34,.4) 60%,transparent);
-    backdrop-filter:saturate(140%) blur(6px); z-index:10; border-bottom:1px solid var(--line)
+  .overlay.on { display:flex; }
+  .modal {
+    width:min(560px, 92vw); background:#fff; border:1px solid #ddd; border-radius:12px;
+    box-shadow:0 10px 40px rgba(0,0,0,.25); padding:16px;
+    font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#111;
   }
-  .brand{font-family:"Russo One",Inter,sans-serif;letter-spacing:.5px}
-  .brand b{color:var(--brand)}
-  .muted{color:var(--muted)}
-  .btn{
-    appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
-    padding:8px 12px;border-radius:10px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px
+  .modal h2 { margin:0 0 8px 0; font-size:18px; }
+  .modal .price { margin:0 0 12px 0; color:#444; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .drop {
+    width:100%; min-height:120px; border:1px dashed #bbb; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; padding:10px; color:#666;
   }
-  .btn:hover{transform:translateY(-1px);border-color:#2b3a61}
-  .btn.brand{background:var(--brand);color:#000;border-color:#000}
-  .btn.ok{background:var(--ok);color:#001b08;border-color:#001b08}
-  .btn.bad{background:#ff5a5f;color:#210;border-color:#210}
-  .toolbar{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .stat{display:flex;gap:10px;align-items:center}
-  .stat b{font-weight:700}
-  #wrap{position:absolute;inset:56px 0 0 0;overflow:hidden}
-  canvas{display:block;position:absolute;inset:0;cursor:grab}
-  canvas:active{cursor:grabbing}
-  .hint{
-    position:fixed;right:10px;bottom:10px;background:rgba(15,26,51,.86);padding:8px 10px;border:1px solid var(--line);border-radius:10px;
-    color:var(--muted)
+  .thumb { max-width:100%; max-height:200px; margin-top:8px; border-radius:8px; border:1px solid #eee; }
+  .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+  .btn {
+    appearance:none; border:1px solid #ccc; background:#fff; color:#111; padding:8px 12px;
+    border-radius:10px; cursor:pointer;
   }
-  /* модалки */
-  .modal{
-    position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:20px
-  }
-  .modal.on{display:flex}
-  .card{width:min(680px,calc(100% - 24px));background:#0f1a33;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.5);padding:18px}
-  .row{display:flex;gap:12px;flex-wrap:wrap}
-  .row>div{flex:1 1 220px}
-  label{display:block;margin:8px 0 4px;color:var(--muted)}
-  input[type="text"],input[type="email"],input[type="url"]{
-    width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0a152b;color:var(--ink)
-  }
-  .drop{
-    border:1px dashed #335;border-radius:12px;padding:12px;display:flex;gap:12px;align-items:center;justify-content:center;min-height:120px;background:#0a152b
-  }
-  .thumb{max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--line)}
-  .grid-legend{
-    position:fixed;left:12px;bottom:12px;background:rgba(15,26,51,.9);border:1px solid var(--line);padding:10px;border-radius:12px;color:var(--muted)
-  }
-  .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);margin-right:6px}
-  .link{color:var(--brand);text-decoration:none;border-bottom:1px dotted var(--brand)}
-  .mini{font-size:12px;color:var(--muted)}
-  .warn{color:#ffb4b4}
+  .btn.primary { background:#111; color:#fff; border-color:#111; }
+  .mini { font-size:12px; color:#666; }
+  a.pay { text-decoration:none; }
 </style>
 </head>
 <body>
-<script src="env.js"></script>
 
-<header>
-  <div class="brand"><b id="brand"></b> — 1 000 000 клеточек × $1</div>
-  <div class="stat">
-    <span class="pill">Свободно: <b id="freeCount">—</b></span>
-    <span class="pill">Занято: <b id="busyCount">—</b></span>
-    <span class="pill">Оплачено: <b id="paidCount">—</b></span>
-  </div>
-  <div class="toolbar">
-    <button class="btn" id="zoomOut">−</button>
-    <button class="btn" id="zoomIn">+</button>
-    <button class="btn" id="goTo">Перейти к ячейке…</button>
-    <button class="btn brand" id="howBtn">Как это работает</button>
-    <button class="btn" id="adminBtn">Админ</button>
-  </div>
-</header>
+<canvas id="field"></canvas>
 
-<div id="wrap">
-  <canvas id="board"></canvas>
-</div>
+<!-- Minimal modal -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h2 id="mTitle">Cell</h2>
+    <p class="price" id="mPrice">$ — / 1 year</p>
 
-<div class="grid-legend">
-  <div><span class="pill" style="background:#071128;border-color:#101e4a;color:#9fb2ff">Свободно</span>
-       <span class="pill" style="background:#271c00;border-color:#433200;color:#ffd33b">Занято</span>
-       <span class="pill" style="background:#082311;border-color:#0f3a1e;color:#7dffb3">Оплачено</span></div>
-  <div class="mini">Зум: колесо/кнопки. Перемещение: перетаскивание.</div>
-</div>
-
-<div class="hint">Выбери клетку → клик</div>
-
-<!-- Модалка инфо/покупки -->
-<div class="modal" id="cellModal">
-  <div class="card">
-    <h3 id="cellTitle">Ячейка</h3>
-    <div id="cellStatus" class="mini"></div>
-    <div id="cellPreviewWrap" style="margin:10px 0;display:none">
-      <img id="cellPreview" class="thumb" alt="ad"/>
-    </div>
-    <div id="claimForm" style="display:none">
-      <div class="row">
-        <div>
-          <label>Ссылка (клик по рекламе)</label>
-          <input type="url" id="inpLink" placeholder="https://пример.сайт/"/>
-        </div>
-        <div>
-          <label>Ваш e-mail (для чека и управления)</label>
-          <input type="email" id="inpEmail" placeholder="you@example.com"/>
-        </div>
-      </div>
-      <label>Картинка рекламы (PNG/JPG, до 1 МБ)</label>
+    <div class="row">
       <div class="drop" id="drop">
-        <input type="file" id="file" accept="image/*" style="display:none"/>
-        <button class="btn" id="pick">Загрузить файл</button>
-        <span class="mini">или перетащи сюда</span>
+        <input type="file" id="file" accept="image/*" style="display:none">
+        <span id="dropText">Drop your ad image here (or click)</span>
       </div>
-      <div style="margin-top:10px">
-        <button class="btn brand" id="reserveBtn">Забронировать $1</button>
-        <span class="mini">Место держится 2 часа в статусе «ожидает оплату»</span>
-      </div>
+      <img id="preview" class="thumb" alt="" style="display:none">
     </div>
-    <div id="pendingBlock" style="display:none">
-      <p>Эта ячейка забронирована и ожидает оплату: <b>$1 за 1 год</b>.</p>
-      <p>Оплатить: <a id="payLink" class="link" target="_blank" rel="noopener">перейти к оплате</a></p>
-      <button class="btn ok" id="iPaid">Я оплатил</button>
-      <span class="mini">После модерации реклама активируется на 365 дней.</span>
+
+    <div class="actions">
+      <button class="btn" id="closeBtn">Close</button>
+      <a class="btn primary pay" id="payBtn" href="#" target="_blank" rel="noopener">Pay</a>
     </div>
-    <div id="paidBlock" style="display:none">
-      <p>Реклама активна до: <b id="expDate">—</b></p>
-      <p class="mini">Клик по ячейке ведёт по вашей ссылке.</p>
-    </div>
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <button class="btn" id="close1">Закрыть</button>
-      <button class="btn bad" id="releaseBtn" style="display:none">[Админ] Снять/освободить</button>
-      <button class="btn ok" id="approveBtn" style="display:none">[Админ] Подтвердить оплату</button>
-    </div>
+    <div class="mini">Payment link is a placeholder. Integration will be added later.</div>
   </div>
 </div>
-
-<!-- Модалка «как это работает» -->
-<div class="modal" id="howModal">
-  <div class="card">
-    <h3>Как это работает</h3>
-    <ol>
-      <li>На странице <b>1 000 000</b> ячеек хаотичной формы. Выберите любую и кликните.</li>
-      <li>Загрузите <b>картинку</b> (ваша реклама) и укажите <b>ссылку</b>.</li>
-      <li>Нажмите «Забронировать» → оплатите <b>$1</b> по ссылке → вернитесь и нажмите «Я оплатил».</li>
-      <li>Админ подтверждает оплату — реклама висит <b>365 дней</b>.</li>
-    </ol>
-    <p class="mini">Примечание: до подтверждения показывается «ожидает оплату» с лёгкой водяной меткой.</p>
-    <div style="margin-top:10px"><button class="btn" id="closeHow">Понятно</button></div>
-  </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
 
 <script>
-/* ========= CONFIG / FIREBASE ========= */
-const CFG = window.APP_CONFIG || {};
-document.getElementById('brand').textContent = CFG.BRAND || 'Million Mosaic';
+/* ====== Config (you can change) ====== */
+const CELL_COUNT = 1000;          // number of cells
+const WORLD_W = 4000, WORLD_H = 2600;  // virtual world size (bigger = finer mosaic)
+const LINE_COLOR = '#d8d8d8';     // borders (light gray)
+const LINE_WIDTH = 1;
 
-firebase.initializeApp(CFG.FIREBASE);
-const db = firebase.firestore();
-const storage = firebase.storage();
+/* ====== Utilities ====== */
+const rnd = (a=0, b=1) => a + Math.random()*(b-a);
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+function mix(a, b, t){ return a + (b-a)*t; }
 
-/* ========= МОДЕЛЬ ДАННЫХ =========
-Коллекция: cells
-Документ id: `${x}_${y}` (x: 0..999, y: 0..999)
-Поля:
-- x, y, tile (например "12_37" для тайла 100×100), idNum (y*1000 + x)
-- status: "paid" | "pending"
-- linkUrl, email, imageUrl
-- createdAt, expiresAt (timestamp millis)
-- paidAt (timestamp millis) | null
-=================================== */
+/* ====== Treemap-like random split to 1000 rectangles ====== */
+function makeRect(x,y,w,h){ return {x,y,w,h, area:w*h}; }
+function splitRect(r){
+  // choose orientation: prefer splitting along larger dimension
+  const horizBias = (r.w > r.h) ? 0.8 : 0.2;
+  const horiz = Math.random() < horizBias;
 
-const WORLD = { cols:1000, rows:1000, total:1000000, tileSize:100 };
-const COLORS = {
-  free:"#0b1530",
-  busy:"#2e2303",
-  paid:"#0c2a17",
-  stroke:"#1b2b52"
-};
-let stats = {free: WORLD.total, busy: 0, paid:0};
+  if (horiz) {
+    const cut = clamp(Math.round(r.w * rnd(0.35, 0.65)), 6, r.w-6);
+    const a = makeRect(r.x, r.y, cut, r.h);
+    const b = makeRect(r.x + cut, r.y, r.w - cut, r.h);
+    return [a,b];
+  } else {
+    const cut = clamp(Math.round(r.h * rnd(0.35, 0.65)), 6, r.h-6);
+    const a = makeRect(r.x, r.y, r.w, cut);
+    const b = makeRect(r.x, r.y + cut, r.w, r.h - cut);
+    return [a,b];
+  }
+}
 
-/* ========= ПАНОРАМА / ЗУМ НА CANVAS ========= */
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d', { alpha: false });
+function buildLayout(count){
+  const list = [ makeRect(0,0, WORLD_W, WORLD_H) ];
+  // Always split the largest area rectangle that can still split
+  while (list.length < count) {
+    // find largest that can split
+    let idx = -1, bestArea = -1;
+    for (let i=0;i<list.length;i++){
+      const r = list[i];
+      if (r.w > 12 || r.h > 12) { // splittable threshold
+        if (r.area > bestArea){ bestArea = r.area; idx = i; }
+      }
+    }
+    if (idx === -1) break; // cannot reach exact count, but with thresholds it should
+    const r = list.splice(idx,1)[0];
+    const [a,b] = splitRect(r);
+    list.push(a,b);
+  }
+  // Recompute ids
+  list.forEach((r,i)=> r.id = i);
+  return list;
+}
+
+/* ====== Pricing: map area -> $1..$10,000 (log-ish + randomness) ====== */
+function assignPrices(cells){
+  let maxA = 0; for (const r of cells) maxA = Math.max(maxA, r.area);
+  for (const r of cells){
+    const norm = r.area / maxA; // 0..1
+    // bias: more area -> higher price, but add randomness to avoid strict ordering
+    const jitter = Math.pow(Math.random(), 2); // 0..1, skewed to lower
+    const base = clamp(0.25*norm + 0.75*jitter, 0, 1);
+    let price = Math.round( 1 + Math.pow(base, 1.2) * (10000 - 1) );
+    price = clamp(price, 1, 10000);
+    r.price = price;
+  }
+}
+
+/* ====== Rendering & hit-testing ====== */
+const canvas = document.getElementById('field');
+const ctx = canvas.getContext('2d');
 
 let DPR = Math.max(1, window.devicePixelRatio || 1);
-let vw = 0, vh = 0;
-let scale = 0.6;              // масштаб
-let offsetX = -200, offsetY = -200; // сдвиг мира
-let isDragging = false, dragStartX=0, dragStartY=0, savedOffsetX=0, savedOffsetY=0;
+let W = 0, H = 0;
+let layout = buildLayout(CELL_COUNT);
+assignPrices(layout);
 
-function resize(){
-  vw = canvas.width = Math.floor(window.innerWidth * DPR);
-  vh = canvas.height = Math.floor((window.innerHeight-56) * DPR);
+function fitViewport(){
+  W = Math.floor(window.innerWidth * DPR);
+  H = Math.floor(window.innerHeight * DPR);
+  canvas.width = W; canvas.height = H;
   canvas.style.width = window.innerWidth + 'px';
-  canvas.style.height = (window.innerHeight-56) + 'px';
-  redraw();
+  canvas.style.height = window.innerHeight + 'px';
 }
-window.addEventListener('resize', resize);
+function draw(){
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,W,H);
+  // compute scale to fit world entirely
+  const scale = Math.min(W / WORLD_W, H / WORLD_H);
+  const ox = (W - WORLD_W*scale)/2;
+  const oy = (H - WORLD_H*scale)/2;
 
-/* ========= ХАОТИЧНАЯ ФОРМА КЛЕТОК (детерминированная) ========= */
-function seededRand(seed) {
-  // xorshift32
-  let x = seed | 0; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return (x >>> 0) / 4294967296;
-}
-function drawCellPath(x, y, size){
-  // базовый квадрат, углы слегка «рваные»
-  const s = size, id = y*WORLD.cols + x;
-  const r1 = seededRand(id+1), r2 = seededRand(id+2), r3 = seededRand(id+3), r4 = seededRand(id+4);
-  const j = s*0.18;
-  const p = [
-    [0 + r1*j, 0 + (1-r2)*j],
-    [s - (1-r2)*j, 0 + r3*j],
-    [s - r3*j, s - (1-r4)*j],
-    [0 + (1-r4)*j, s - r1*j]
-  ];
-  ctx.beginPath();
-  ctx.moveTo(p[0][0], p[0][1]);
-  for (let i=1;i<4;i++) ctx.lineTo(p[i][0], p[i][1]);
-  ctx.closePath();
-}
+  ctx.lineWidth = Math.max(1, LINE_WIDTH * DPR);
+  ctx.strokeStyle = LINE_COLOR;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,W,H); // pure white background
 
-/* ========= ПРОЕКЦИЯ КООРДИНАТ ========= */
-const CELL = 12; // базовая «ширина» клетки в мировых единицах
-function worldToScreen(wx, wy){
-  return [(wx*scale + offsetX)*DPR, (wy*scale + offsetY)*DPR];
-}
-function screenToWorld(sx, sy){
-  return [(sx/DPR - offsetX)/scale, (sy/DPR - offsetY)/scale];
-}
-function cellToWorldXY(x, y){
-  return [x*CELL, y*CELL];
-}
-function worldToCell(wx, wy){
-  return [Math.floor(wx/CELL), Math.floor(wy/CELL)];
-}
-
-/* ========= ПОДГРУЗКА ЯЧЕЕК ИЗ БД ПО ТАЙЛАМ ========= */
-function tileKey(x,y){ return Math.floor(x/WORLD.tileSize)+"_"+Math.floor(y/WORLD.tileSize); }
-
-const tileCache = new Map(); // key -> docs[]
-async function fetchTile(tk){
-  if (tileCache.has(tk)) return tileCache.get(tk);
-  const snap = await db.collection('cells').where('tile','==',tk).get();
-  const docs = snap.docs.map(d => d.data());
-  tileCache.set(tk, docs);
-  return docs;
-}
-
-async function getCellDoc(x,y){
-  const id = `${x}_${y}`;
-  const snap = await db.collection('cells').doc(id).get();
-  return snap.exists ? snap.data() : null;
-}
-
-function clearExpiredLocal(docs){
-  const now = Date.now();
-  return docs.filter(d => !d.expiresAt || d.expiresAt > now);
-}
-
-/* ========= РЕНДЕР ========= */
-async function redraw(){
-  ctx.fillStyle = COLORS.free;
-  ctx.fillRect(0,0,vw,vh);
-
-  // определяем видимую область в мировых координатах
-  const [wx0, wy0] = screenToWorld(0,0);
-  const [wx1, wy1] = screenToWorld(window.innerWidth, window.innerHeight-56);
-  const [cx0, cy0] = worldToCell(wx0, wy0);
-  const [cx1, cy1] = worldToCell(wx1, wy1);
-
-  const minX = Math.max(0, cx0-2), maxX = Math.min(WORLD.cols-1, cx1+2);
-  const minY = Math.max(0, cy0-2), maxY = Math.min(WORLD.rows-1, cy1+2);
-
-  // подгрузка тайлов (не более 9-12 за кадр)
-  const tiles = new Set();
-  for (let ty = Math.floor(minY/WORLD.tileSize); ty <= Math.floor(maxY/WORLD.tileSize); ty++){
-    for (let tx = Math.floor(minX/WORLD.tileSize); tx <= Math.floor(maxX/WORLD.tileSize); tx++){
-      tiles.add(tx+"_"+ty);
-    }
+  // Draw borders only (no text, no fills per cell)
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.scale(scale, scale);
+  for (const r of layout){
+    ctx.beginPath();
+    ctx.rect(r.x, r.y, r.w, r.h);
+    ctx.stroke();
   }
+  ctx.restore();
+  ctx.restore();
 
-  const visibleClaims = [];
-  for (const tk of tiles){
-    const docs = clearExpiredLocal(await fetchTile(tk));
-    visibleClaims.push(...docs);
-  }
+  // store transform for hit tests
+  draw._scale = scale; draw._ox = ox; draw._oy = oy;
+}
+window.addEventListener('resize', ()=>{ fitViewport(); draw(); });
+fitViewport(); draw();
 
-  // рисуем занятые/оплаченные (фоновые плоскости)
-  for (const d of visibleClaims){
-    const [wx, wy] = cellToWorldXY(d.x, d.y);
-    const [sx, sy] = worldToScreen(wx, wy);
-    ctx.save();
-    ctx.translate(sx, sy);
-    drawCellPath(d.x, d.y, CELL*scale*DPR);
-    ctx.fillStyle = (d.status === 'paid') ? COLORS.paid : COLORS.busy;
-    ctx.fill();
-    ctx.restore();
+/* Point in rect in world coords */
+function hitTest(clientX, clientY){
+  const sx = clientX * DPR, sy = clientY * DPR;
+  const worldX = (sx - draw._ox) / draw._scale;
+  const worldY = (sy - draw._oy) / draw._scale;
+  if (worldX < 0 || worldY < 0 || worldX > WORLD_W || worldY > WORLD_H) return null;
+  // Since rectangles do not overlap, we can binary search if sorted. Simpler: linear scan (1000 ok).
+  for (let i=0;i<layout.length;i++){
+    const r = layout[i];
+    if (worldX >= r.x && worldX <= r.x + r.w && worldY >= r.y && worldY <= r.y + r.h) return r;
   }
-
-  // сетка/контур (только при достаточном масштабе)
-  if (scale*CELL > 6){
-    ctx.strokeStyle = COLORS.stroke;
-    ctx.lineWidth = Math.max(1, 0.7*DPR);
-    for (let y=minY; y<=maxY; y++){
-      for (let x=minX; x<=maxX; x++){
-        const [wx, wy] = cellToWorldXY(x, y);
-        const [sx, sy] = worldToScreen(wx, wy);
-        ctx.save(); ctx.translate(sx, sy);
-        drawCellPath(x, y, CELL*scale*DPR);
-        ctx.stroke(); ctx.restore();
-      }
-    }
-  }
-
-  // рисуем миниатюры изображений у оплаченных вблизи
-  if (scale*CELL > 18){
-    for (const d of visibleClaims){
-      if (!d.imageUrl) continue;
-      const [wx, wy] = cellToWorldXY(d.x, d.y);
-      const [sx, sy] = worldToScreen(wx, wy);
-      const img = await loadImageCached(d.imageUrl);
-      const pad = 2*DPR;
-      const s = CELL*scale*DPR;
-      ctx.drawImage(img, sx+pad, sy+pad, s-2*pad, s-2*pad);
-      if (d.status !== 'paid'){
-        // водяная метка
-        ctx.fillStyle = "rgba(0,0,0,.35)";
-        ctx.fillRect(sx+pad, sy+pad, s-2*pad, s-2*pad);
-      }
-    }
-  }
+  return null;
 }
 
-const imageCache = new Map();
-function loadImageCached(url){
-  if (imageCache.has(url)) return imageCache.get(url);
-  const p = new Promise((resolve,reject)=>{
-    const img = new Image(); img.crossOrigin = "anonymous";
-    img.onload = ()=>resolve(img); img.onerror = reject; img.src=url;
-  });
-  imageCache.set(url,p);
-  return p;
-}
+/* ====== Modal logic ====== */
+const overlay = document.getElementById('overlay');
+const mTitle = document.getElementById('mTitle');
+const mPrice = document.getElementById('mPrice');
+const payBtn = document.getElementById('payBtn');
+const closeBtn = document.getElementById('closeBtn');
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const preview = document.getElementById('preview');
+const dropText = document.getElementById('dropText');
 
-/* ========= ВЗАИМОДЕЙСТВИЕ: ПАН/ЗУМ/КЛИК ========= */
-resize();
+let currentCell = null;
 
-canvas.addEventListener('mousedown', (e)=>{
-  isDragging = true; dragStartX = e.clientX; dragStartY = e.clientY;
-  savedOffsetX = offsetX; savedOffsetY = offsetY;
+canvas.addEventListener('click', (e)=>{
+  const r = hitTest(e.clientX, e.clientY);
+  if (!r) return;
+  currentCell = r;
+  mTitle.textContent = `Cell #${r.id}`;
+  mPrice.textContent = `$${r.price} / 1 year`;
+  payBtn.href = `#pay-${r.id}-${r.price}`; // placeholder; integrate later
+  preview.style.display = 'none';
+  preview.src = '';
+  overlay.classList.add('on');
 });
-window.addEventListener('mouseup', ()=> isDragging=false);
-window.addEventListener('mousemove', (e)=>{
-  if (!isDragging) return;
-  offsetX = savedOffsetX + (e.clientX - dragStartX);
-  offsetY = savedOffsetY + (e.clientY - dragStartY);
-  redraw();
-});
-canvas.addEventListener('wheel', (e)=>{
+
+closeBtn.addEventListener('click', ()=> overlay.classList.remove('on'));
+overlay.addEventListener('click', (e)=>{ if (e.target === overlay) overlay.classList.remove('on'); });
+document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') overlay.classList.remove('on'); });
+
+drop.addEventListener('click', ()=> fileInput.click());
+drop.addEventListener('dragover', (e)=>{ e.preventDefault(); drop.style.borderColor='#888'; });
+drop.addEventListener('dragleave', ()=>{ drop.style.borderColor='#bbb'; });
+drop.addEventListener('drop', (e)=>{
   e.preventDefault();
-  const delta = Math.sign(e.deltaY) * -0.05;
-  const oldScale = scale;
-  scale = Math.min(3, Math.max(0.15, scale + delta));
-
-  // масштаб вокруг курсора
-  const rect = canvas.getBoundingClientRect();
-  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-  const [wx, wy] = screenToWorld(cx, cy);
-  offsetX = cx - wx*scale;
-  offsetY = cy - wy*scale;
-  redraw();
-},{passive:false});
-
-document.getElementById('zoomIn').onclick = ()=>{ scale = Math.min(3, scale+0.1); redraw(); };
-document.getElementById('zoomOut').onclick = ()=>{ scale = Math.max(0.15, scale-0.1); redraw(); };
-
-canvas.addEventListener('click', async (e)=>{
-  const rect = canvas.getBoundingClientRect();
-  const [wx, wy] = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-  let [cx, cy] = worldToCell(wx, wy);
-  cx = Math.min(Math.max(0,cx), WORLD.cols-1);
-  cy = Math.min(Math.max(0,cy), WORLD.rows-1);
-  openCellModal(cx, cy);
+  drop.style.borderColor='#bbb';
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e)=>{
+  if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
 });
 
-/* ========= МОДАЛКИ / UI ========= */
-const cellModal = document.getElementById('cellModal');
-const howModal = document.getElementById('howModal');
-document.getElementById('howBtn').onclick = ()=> howModal.classList.add('on');
-document.getElementById('closeHow').onclick = ()=> howModal.classList.remove('on');
-document.getElementById('close1').onclick = ()=> cellModal.classList.remove('on');
-
-document.getElementById('goTo').onclick = ()=>{
-  const v = prompt("Перейти к ячейке (формат X,Y от 0..999), например: 512,384");
-  if (!v) return;
-  const parts = v.split(',').map(s=>parseInt(s.trim(),10));
-  if (parts.length===2 && parts.every(n=>Number.isFinite(n))){
-    const [x,y]=parts;
-    const [wx,wy]=cellToWorldXY(x,y);
-    const cx = window.innerWidth/2, cy=(window.innerHeight-56)/2;
-    offsetX = cx - wx*scale; offsetY = cy - wy*scale;
-    scale = Math.max(scale, 0.8);
-    redraw();
-  }
-};
-
-document.getElementById('adminBtn').onclick = ()=> {
-  const code = prompt("Введи админ-код:");
-  window.__isAdmin = (code === CFG.ADMIN_CODE);
-  alert(window.__isAdmin ? "Админ-режим включён" : "Неверный код");
-};
-
-/* ========= ОКНО ЯЧЕЙКИ / БРОНИРОВАНИЕ ========= */
-const cellTitle = document.getElementById('cellTitle');
-const cellStatus = document.getElementById('cellStatus');
-const claimForm = document.getElementById('claimForm');
-const pendingBlock = document.getElementById('pendingBlock');
-const paidBlock = document.getElementById('paidBlock');
-const releaseBtn = document.getElementById('releaseBtn');
-const approveBtn = document.getElementById('approveBtn');
-const previewWrap = document.getElementById('cellPreviewWrap');
-const previewImg = document.getElementById('cellPreview');
-
-let currentCell = {x:0,y:0, doc:null};
-let uploadFile = null;
-
-document.getElementById('pick').onclick = ()=> document.getElementById('file').click();
-document.getElementById('file').onchange = e => setFile(e.target.files[0]);
-document.getElementById('drop').ondragover = e => { e.preventDefault(); };
-document.getElementById('drop').ondrop = e => { e.preventDefault(); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); };
-
-function setFile(f){
-  if (!f) return;
-  if (!/^image\//.test(f.type)) return alert("Нужна картинка");
-  if (f.size > 1024*1024) return alert("До 1 МБ, пожалуйста");
-  uploadFile = f;
+function handleFile(file){
+  if (!/^image\//.test(file.type)) { alert('Please choose an image file'); return; }
   const r = new FileReader();
-  r.onload = ()=> { previewImg.src = r.result; previewWrap.style.display='block'; };
-  r.readAsDataURL(f);
+  r.onload = ()=> {
+    preview.src = r.result;
+    preview.style.display = 'block';
+    dropText.textContent = 'Image selected';
+  };
+  r.readAsDataURL(file);
 }
 
-async function openCellModal(x,y){
-  currentCell = {x,y, doc:null};
-  cellTitle.textContent = `Ячейка ${x},${y} (ID ${y*WORLD.cols+x})`;
-  previewWrap.style.display='none';
-  claimForm.style.display='none';
-  pendingBlock.style.display='none';
-  paidBlock.style.display='none';
-  releaseBtn.style.display='none';
-  approveBtn.style.display='none';
-  cellStatus.textContent = 'Загрузка…';
-  cellModal.classList.add('on');
-
-  const doc = await getCellDoc(x,y);
-  currentCell.doc = doc;
-
-  if (!doc){
-    cellStatus.innerHTML = 'Статус: <b>свободно</b>. Цена: <b>$1</b> за 1 год.';
-    claimForm.style.display='block';
-  } else {
-    const expired = doc.expiresAt && doc.expiresAt < Date.now();
-    if (expired){
-      cellStatus.innerHTML = '<span class="warn">Срок истёк — ячейка считается свободной.</span>';
-      claimForm.style.display='block';
-    } else {
-      // занята
-      cellStatus.innerHTML = `Статус: <b>${doc.status}</b>${doc.status==='pending'?' — ожидание оплаты':''}`;
-      if (doc.imageUrl){ previewImg.src = doc.imageUrl; previewWrap.style.display='block'; }
-      if (doc.status==='pending'){
-        pendingBlock.style.display='block';
-        document.getElementById('payLink').href = CFG.PAYMENT_LINK;
-      }
-      if (doc.status==='paid'){
-        paidBlock.style.display='block';
-        document.getElementById('expDate').textContent = new Date(doc.expiresAt).toLocaleDateString();
-      }
-    }
-    if (window.__isAdmin){
-      releaseBtn.style.display='inline-flex';
-      approveBtn.style.display = (doc && doc.status==='pending') ? 'inline-flex' : 'none';
-    }
-  }
-}
-
-document.getElementById('reserveBtn').onclick = async ()=>{
-  try{
-    const linkUrl = document.getElementById('inpLink').value.trim();
-    const email = document.getElementById('inpEmail').value.trim();
-    if (!uploadFile) return alert("Добавь картинку");
-    if (!/^https?:\/\//i.test(linkUrl)) return alert("Нужна полная ссылка (https://...)");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return alert("Нужен e-mail");
-
-    // транзакция: если свободно — создать pending
-    const id = `${currentCell.x}_${currentCell.y}`;
-    await db.runTransaction(async (tx)=>{
-      const ref = db.collection('cells').doc(id);
-      const snap = await tx.get(ref);
-      const now = Date.now();
-      if (snap.exists){
-        const d = snap.data();
-        if (!d.expiresAt || d.expiresAt > now) throw new Error("Эта ячейка занята");
-      }
-      // загружаем картинку в Storage
-      const path = `ads/${currentCell.x}-${currentCell.y}-${now}-${Math.random().toString(36).slice(2)}.${(uploadFile.type.split('/')[1]||'jpg')}`;
-      const sref = storage.ref().child(path);
-      await sref.put(uploadFile);
-      const imageUrl = await sref.getDownloadURL();
-
-      const tile = tileKey(currentCell.x, currentCell.y);
-      tx.set(ref, {
-        x: currentCell.x, y: currentCell.y, idNum: currentCell.y*WORLD.cols+currentCell.x,
-        tile, status:'pending', linkUrl, email, imageUrl,
-        createdAt: now, paidAt: null,
-        expiresAt: now + 2*60*60*1000 // бронируем на 2 часа до оплаты
-      });
-    });
-    // очистим кэш тайла и обновим
-    tileCache.delete(tileKey(currentCell.x, currentCell.y));
-    await openCellModal(currentCell.x, currentCell.y);
-    alert("Бронь создана. Оплати $1 и нажми «Я оплатил».");
-    redraw();
-  }catch(err){
-    alert(err.message || err);
-  }
-};
-
-document.getElementById('iPaid').onclick = async ()=>{
-  const id = `${currentCell.x}_${currentCell.y}`;
-  const ref = db.collection('cells').doc(id);
-  await ref.update({ status:'pending', paidAt: Date.now() }); // помечаем попытку оплаты (финально подтвердит админ)
-  alert("Спасибо! Админ скоро подтвердит оплату.");
-};
-
-document.getElementById('approveBtn').onclick = async ()=>{
-  if (!window.__isAdmin) return;
-  const ok = confirm("Подтвердить оплату и активировать на 365 дней?");
-  if (!ok) return;
-  const id = `${currentCell.x}_${currentCell.y}`;
-  const now = Date.now();
-  await db.collection('cells').doc(id).update({
-    status:'paid',
-    paidAt: now,
-    expiresAt: now + 365*24*60*60*1000
+/* Optional: hover highlight (subtle) — no text */
+(function enableHover(){
+  let lastIdx = -1;
+  canvas.addEventListener('mousemove', (e)=>{
+    const r = hitTest(e.clientX, e.clientY);
+    if (!r){ if (lastIdx !== -1){ draw(); lastIdx=-1; } return; }
+    if (r.id === lastIdx) return;
+    lastIdx = r.id;
+    draw();
+    // draw subtle highlight
+    ctx.save();
+    const scale = draw._scale, ox = draw._ox, oy = draw._oy;
+    ctx.translate(ox, oy); ctx.scale(scale, scale);
+    ctx.fillStyle = 'rgba(0,0,0,0.03)'; // very subtle
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
   });
-  tileCache.delete(tileKey(currentCell.x, currentCell.y));
-  await openCellModal(currentCell.x, currentCell.y);
-  redraw();
-};
-
-document.getElementById('releaseBtn').onclick = async ()=>{
-  if (!window.__isAdmin) return;
-  const ok = confirm("Снять рекламу и освободить ячейку?");
-  if (!ok) return;
-  const id = `${currentCell.x}_${currentCell.y}`;
-  await db.collection('cells').doc(id).delete();
-  tileCache.delete(tileKey(currentCell.x, currentCell.y));
-  cellModal.classList.remove('on');
-  redraw();
-};
-
-/* ========= СТАТИСТИКА ========= */
-async function updateStats(){
-  // приблизительно: считаем все оплаченные через агрегацию по плиткам (простая оценка)
-  // Firestore не поддерживает count без Cloud Functions — делаем лёгкий трюк: хранить doc stats/global
-  const sref = db.collection('stats').doc('global');
-  const snap = await sref.get();
-  if (snap.exists){
-    const s = snap.data();
-    document.getElementById('freeCount').textContent = (WORLD.total - (s.busy||0));
-    document.getElementById('busyCount').textContent = s.busy||0;
-    document.getElementById('paidCount').textContent = s.paid||0;
-  } else {
-    document.getElementById('freeCount').textContent = '—';
-    document.getElementById('busyCount').textContent = '—';
-    document.getElementById('paidCount').textContent = '—';
-  }
-}
-// Обновление счётчиков при изменениях (опционально: слушать изменения одной "stats" записи)
-db.collection('stats').doc('global').onSnapshot(()=> updateStats());
-updateStats();
-
-/* ========= ПЕРВИЧНЫЙ РЕНДЕР ========= */
-redraw();
-
-/* ========= ХАК: ПЕРИОДИЧЕСКИ ПЕРЕРИСОВЫВАТЬ ЕСЛИ НАЧАЛОСЬ ДВИЖЕНИЕ ========= */
-let raf;
-function loop(){ raf = requestAnimationFrame(loop); }
-loop();
+})();
 </script>
 </body>
 </html>
