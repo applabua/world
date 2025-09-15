@@ -5,7 +5,7 @@
 <title>GOLDEN MILLION — Get in now, be remembered beside legends.</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root{ --bg:#fff; --ink:#111; --muted:#6b7280; --line:#e4e7ee; --outline:#cfd6e3; --overlay:rgba(0,0,0,.5); }
+  :root{ --bg:#fff; --ink:#111; --muted:#6b7280; --outline:#cfd6e3; --overlay:rgba(0,0,0,.5); --hover:rgba(0,0,0,.08); }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
   header{position:fixed;inset:0 0 auto 0;z-index:20;display:flex;justify-content:center;padding:8px 12px;pointer-events:none}
@@ -13,7 +13,7 @@
   .dot{width:10px;height:10px;border-radius:50%;background:radial-gradient(#ffd24d,#e1b526)}
   .cta b{font-weight:800}.cta span{color:var(--muted)}
   #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-  canvas{display:block; max-width:100vw; max-height:100vh; width:100%; height:100%}
+  canvas{display:block; max-width:100vw; max-height:100vh; width:100%; height:100%; cursor:default}
 
   /* Modals */
   .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:50}
@@ -30,6 +30,7 @@
   .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
   .btn{appearance:none;border:1px solid #e7ebf2;background:#fff;color:#111;padding:8px 12px;border-radius:10px;cursor:pointer}
   .btn.primary{border-color:#111;background:#111;color:#fff}
+  .zoomHint{position:fixed;right:10px;bottom:10px;background:rgba(255,255,255,.9);border:1px solid #e7ebf2;border-radius:10px;padding:6px 8px;color:#555}
 </style>
 </head>
 <body>
@@ -38,6 +39,7 @@
 </header>
 
 <div id="stage"><canvas id="wall"></canvas></div>
+<div class="zoomHint">Zoom: mouse wheel or <b>+</b>/<b>−</b></div>
 
 <!-- VIEW -->
 <div class="overlay" id="viewOverlay">
@@ -69,27 +71,21 @@
 </div>
 
 <script>
-/* ========================= Core ========================= */
+/* ========================= CONFIG ========================= */
 const CAN = document.getElementById('wall');
 const CTX = CAN.getContext('2d', {alpha:false});
 let DPR = Math.max(1, window.devicePixelRatio || 1);
 
-/* Logical million places: 1000×1000 cells (no background grid drawn). */
-const WORLD = { cells:1000, size:1000 }; // square 1000×1000 «единиц»
-/* We cover it by a mosaic of rectangles of different sizes. */
-const TILE_COUNT = 3000;                 // достаточно разнообразно и быстро
-const LEGENDS_COUNT = 100;               // топ-100 самых больших — под легенды
+const WORLD = { cells:1000, size:1000 }; // логическая «стена»: 1000×1000 (1,000,000 мест)
+const TILE_COUNT = 3000;                 // мозаика разных размеров
+const LEGENDS_COUNT = 100;               // топ-100 под легенды
+const LS_KEY = 'gm_canvas_claims_v2';
 
-/* State */
-let tiles = [];      // [{id,x,y,w,h, area}]
-let claims = {};     // id -> {img, name, desc, legend}
-const LS_KEY = 'gm_canvas_claims_v1';
-
-/* ================== Utils & RNG (deterministic) ================== */
-let SEED = 123456789>>>0;
+/* =================== RNG & GEOMETRY =================== */
+let SEED = 987654321>>>0;
 function srand(){ SEED = (SEED*1664525 + 1013904223)>>>0; return SEED/4294967296; }
 function rint(a,b){ return Math.floor(a + srand()*(b-a+1)); }
-function rect(x,y,w,h){ return {id:0,x,y,w,h, area:w*h}; }
+const rect = (x,y,w,h)=>({id:0,x,y,w,h,area:w*h});
 function splitOne(r){
   const horiz = r.w >= r.h;
   if (horiz){
@@ -118,41 +114,56 @@ function buildMosaic(target){
     const [a,b]=splitOne(r);
     if (b){ a.area=a.w*a.h; b.area=b.w*b.h; list.push(a,b); } else list.push(r);
   }
-  // Correct too skinny
   for(let k=0;k<list.length;k++){
     const r=list[k], asp=r.w/r.h;
-    if (asp>3 || asp<0.33){
-      const p=splitOne(r);
-      if (p.length===2){ list.splice(k,1,p[0],p[1]); k--; }
-    }
+    if (asp>3 || asp<0.33){ const p=splitOne(r); if (p.length===2){ list.splice(k,1,p[0],p[1]); k--; } }
   }
   while(list.length>target) list.pop();
   list.forEach((r,i)=> r.id=i);
   return list;
 }
+let tiles = buildMosaic(TILE_COUNT);
 
-/* =================== Legends (100 biggest) =================== */
+/* =================== LEGENDS (images + desc) =================== */
 const LEGEND_PHOTOS = {
   "Napoleon Bonaparte":"https://upload.wikimedia.org/wikipedia/commons/5/50/Napoleon_Bonaparte_by_Jean-Auguste-Dominique_Ingres%2C_1806.jpg",
   "Donald Trump":"https://upload.wikimedia.org/wikipedia/commons/5/56/Donald_Trump_official_portrait.jpg",
   "Volodymyr Zelenskyy":"https://upload.wikimedia.org/wikipedia/commons/2/2e/Volodymyr_Zelensky_Official_portrait.jpg",
+  "Joe Biden":"https://upload.wikimedia.org/wikipedia/commons/6/68/Joe_Biden_presidential_portrait.jpg",
   "Elon Musk":"https://upload.wikimedia.org/wikipedia/commons/4/49/Elon_Musk_2015.jpg",
   "George Washington":"https://upload.wikimedia.org/wikipedia/commons/6/6f/George_Washington_by_Gilbert_Stuart%2C_1797.jpg",
-  "Abraham Lincoln":"https://upload.wikimedia.org/wikipedia/commons/a/a4/Abraham_Lincoln_O-116_by_Gardner%2C_1865-crop.png",
-  "Albert Einstein":"https://upload.wikimedia.org/wikipedia/commons/d/d3/Albert_Einstein_Head.jpg",
+  "Abraham Lincoln":"https://upload.wikimedia.org/wikipedia/commons/a/a3/Abraham_Lincoln_O-77_matte_collodion_print.jpg",
+  "Winston Churchill":"https://upload.wikimedia.org/wikipedia/commons/1/1e/Churchill_portrait_NYP_45063.jpg",
+  "Martin Luther King Jr.":"https://upload.wikimedia.org/wikipedia/commons/1/1e/Martin_Luther_King_Jr_NYWTS_3.jpg",
   "Leonardo da Vinci":"https://upload.wikimedia.org/wikipedia/commons/6/6d/Leonardo_self.jpg",
   "Marie Curie":"https://upload.wikimedia.org/wikipedia/commons/7/7e/Marie_Curie_c1920.jpg",
+  "Albert Einstein":"https://upload.wikimedia.org/wikipedia/commons/d/d3/Albert_Einstein_Head.jpg",
   "Nikola Tesla":"https://upload.wikimedia.org/wikipedia/commons/d/d4/N.Tesla.JPG",
-  "Mahatma Gandhi":"https://upload.wikimedia.org/wikipedia/commons/d/d1/Portrait_Gandhi.jpg",
-  "Martin Luther King Jr.":"https://upload.wikimedia.org/wikipedia/commons/a/a3/Martin_Luther_King_Jr_NYWTS_6.jpg",
-  "Winston Churchill":"https://upload.wikimedia.org/wikipedia/commons/1/1e/Sir_Winston_Churchill_-_19086236948.jpg",
-  "Cleopatra":"https://upload.wikimedia.org/wikipedia/commons/2/2b/Cleopatra_VII_%28Altes_Museum%29.jpg",
+  "Angela Merkel":"https://upload.wikimedia.org/wikipedia/commons/9/90/Angela_Merkel_Juli_2010_-_3zu4.jpg",
+  "Barack Obama":"https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg",
   "Steve Jobs":"https://upload.wikimedia.org/wikipedia/commons/8/80/Steve_Jobs_Headshot_2010-CROP2.jpg",
   "Bill Gates":"https://upload.wikimedia.org/wikipedia/commons/a/a0/Bill_Gates_2018.jpg",
-  "Jeff Bezos":"https://upload.wikimedia.org/wikipedia/commons/3/35/Jeff_Bezos_cropped.jpg",
-  "Barack Obama":"https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg",
-  "Joe Biden":"https://upload.wikimedia.org/wikipedia/commons/6/68/Joe_Biden_presidential_portrait.jpg",
-  "Angela Merkel":"https://upload.wikimedia.org/wikipedia/commons/b/bb/Angela_Merkel_Juli_2010_-_3zu4.jpg"
+  "Jeff Bezos":"https://upload.wikimedia.org/wikipedia/commons/3/35/Jeff_Bezos_cropped.jpg"
+};
+const LEGEND_DESC = {
+  "Napoleon Bonaparte":"French statesman and military leader.",
+  "Donald Trump":"45th President of the United States.",
+  "Volodymyr Zelenskyy":"President of Ukraine.",
+  "Joe Biden":"46th President of the United States.",
+  "Elon Musk":"Entrepreneur and engineer.",
+  "George Washington":"1st U.S. President.",
+  "Abraham Lincoln":"16th U.S. President.",
+  "Winston Churchill":"UK Prime Minister during WWII.",
+  "Martin Luther King Jr.":"Civil rights leader.",
+  "Leonardo da Vinci":"Renaissance polymath.",
+  "Marie Curie":"Pioneer in radioactivity.",
+  "Albert Einstein":"Theoretical physicist.",
+  "Nikola Tesla":"Inventor and electrical engineer.",
+  "Angela Merkel":"Chancellor of Germany (2005–2021).",
+  "Barack Obama":"44th U.S. President.",
+  "Steve Jobs":"Apple co-founder.",
+  "Bill Gates":"Microsoft co-founder.",
+  "Jeff Bezos":"Amazon founder."
 };
 const LEGEND_NAMES = Object.keys(LEGEND_PHOTOS).concat([
   "Nelson Mandela","Julius Caesar","Pablo Picasso","Vincent van Gogh","Michelangelo",
@@ -163,14 +174,72 @@ const LEGEND_NAMES = Object.keys(LEGEND_PHOTOS).concat([
   "Michael Jordan","Kobe Bryant","Lionel Messi","Cristiano Ronaldo","Pelé",
   "Usain Bolt","Bruce Lee","Jackie Chan","Hayao Miyazaki","Akira Kurosawa",
   "Steven Spielberg","George Lucas","Quentin Tarantino","James Cameron","Mother Teresa",
-  "Florence Nightingale","Yayoi Kusama","Banksy","Salvador Dalí","Socrates",
+  "Florence Nightingale","Yuri Gagarin","Neil Armstrong","Jane Goodall","Socrates",
   "Plato","Aristotle","Confucius","Sun Tzu","Genghis Khan",
   "Alexander the Great","Queen Elizabeth II","Joan of Arc","Catherine the Great","Sheryl Sandberg",
   "Satya Nadella","Sundar Pichai","Tim Cook","Susan Wojcicki","Desmond Tutu",
-  "Lech Wałęsa","Václav Havel","Stephen Hawking","Jane Goodall","Neil Armstrong",
-  "Yuri Gagarin","Amelia Earhart","J.R.R. Tolkien","George R. R. Martin","J.K. Rowling",
+  "Lech Wałęsa","Václav Havel","J.R.R. Tolkien","George R. R. Martin","J.K. Rowling",
   "Haruki Murakami","Gabriel García Márquez","Oprah Winfrey","Greta Thunberg","Galileo Galilei"
 ]).slice(0,LEGENDS_COUNT);
+
+/* =================== STORAGE =================== */
+let claims = {};
+try{ claims = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }catch(e){ claims = {}; }
+function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){ alert("Storage quota exceeded. Try a smaller image."); }}
+
+/* =================== PREFILL LEGENDS =================== */
+(function prefill(){
+  const have = Object.values(claims).filter(v=>v && v.legend).length;
+  if (have >= LEGENDS_COUNT) return;
+  const sorted = [...tiles].sort((a,b)=>b.area-a.area).slice(0,LEGENDS_COUNT);
+  sorted.forEach((t,i)=>{
+    const name = LEGEND_NAMES[i] || "Legend";
+    const url  = LEGEND_PHOTOS[name];
+    claims[t.id] = {
+      img: url || initialsAvatar(name, Math.max(300, t.w), Math.max(300, t.h)),
+      name,
+      desc: LEGEND_DESC[name] || "Legend.",
+      legend: true
+    };
+  });
+  persist();
+})();
+
+/* =================== CANVAS RENDER =================== */
+let W=0,H=0,SCALE=1, hoverId=null;
+function resize(){
+  const vw = Math.max(360, window.innerWidth);
+  const vh = Math.max(360, window.innerHeight);
+  W = Math.floor(vw*DPR); H = Math.floor(vh*DPR);
+  CAN.width = W; CAN.height = H;
+  CAN.style.width = vw+'px'; CAN.style.height = vh+'px';
+  fitToView(); draw();
+}
+window.addEventListener('resize', resize);
+
+function fitToView(){
+  // вписываем всю стену, без панорамирования
+  SCALE = Math.min(W, H) / WORLD.size;
+}
+function setZoom(mult){
+  // Зум без панорамирования: просто меняем масштаб и перерисовываем
+  SCALE = Math.max(0.2, Math.min(3, SCALE*mult));
+  draw();
+}
+
+const imgCache = new Map();
+function loadImg(src){
+  if (imgCache.has(src)) return imgCache.get(src);
+  const p = new Promise((res,rej)=>{
+    const im = new Image();
+    im.crossOrigin = "anonymous";
+    im.referrerPolicy = "no-referrer";
+    im.onload = ()=>res(im);
+    im.onerror = ()=>rej(new Error('img-load-fail'));
+    im.src = src;
+  });
+  imgCache.set(src,p); return p;
+}
 
 function initialsAvatar(name,w,h){
   const init = name.split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
@@ -185,77 +254,10 @@ function initialsAvatar(name,w,h){
   return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
 }
 
-/* ===================== Storage ===================== */
-try{ claims = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }catch(e){ claims = {}; }
-function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){ alert("Storage quota exceeded. Try a smaller image."); }}
-
-/* ===================== Build & Prefill ===================== */
-tiles = buildMosaic(TILE_COUNT);
-(function prefill(){
-  const have = Object.values(claims).filter(v=>v && v.legend).length;
-  if (have >= LEGENDS_COUNT) return;
-  const sorted = [...tiles].sort((a,b)=>b.area-a.area).slice(0,LEGENDS_COUNT);
-  sorted.forEach((t,i)=>{
-    const name = LEGEND_NAMES[i] || "Legend";
-    const url  = LEGEND_PHOTOS[name];
-    claims[t.id] = {
-      img: url || initialsAvatar(name, Math.max(300, t.w), Math.max(300, t.h)),
-      name, desc:"Part of the Golden Million.", legend:true
-    };
-  });
-  persist();
-})();
-
-/* ===================== Rendering ===================== */
-let W=0,H=0, SCALE=1; // canvas pixel size & scale (cells->px)
-function resize(){
-  // fit whole wall inside viewport (fixed page)
-  const vw = Math.max(320, window.innerWidth);
-  const vh = Math.max(320, window.innerHeight);
-  const k = Math.min(vw, vh) * DPR;
-  // we keep aspect 1:1 for world (1000×1000)
-  W = Math.floor(vw * DPR); H = Math.floor(vh * DPR);
-  CAN.width = W; CAN.height = H;
-  CAN.style.width = vw + 'px'; CAN.style.height = vh + 'px';
-  SCALE = Math.min(W, H) / WORLD.size;
-  draw();
-}
-window.addEventListener('resize', resize);
-
-const imgCache = new Map();
-function loadImg(src){
-  if (imgCache.has(src)) return imgCache.get(src);
-  const p = new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.referrerPolicy="no-referrer"; im.onload=()=>res(im); im.onerror=rej; im.src=src; });
-  imgCache.set(src,p); return p;
-}
-async function draw(){
-  CTX.setTransform(1,0,0,1,0,0);
-  CTX.fillStyle = "#fff"; CTX.fillRect(0,0,W,H);
-
-  // world origin centered
-  const offsetX = (W - WORLD.size*SCALE)/2;
-  const offsetY = (H - WORLD.size*SCALE)/2;
-
-  // outlines
-  CTX.lineWidth = Math.max(1, 0.8*DPR);
-  CTX.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--outline').trim() || '#cfd6e3';
-
-  for(const t of tiles){
-    const x = Math.floor(offsetX + t.x * SCALE);
-    const y = Math.floor(offsetY + t.y * SCALE);
-    const w = Math.ceil(t.w * SCALE);
-    const h = Math.ceil(t.h * SCALE);
-
-    // content if claimed
-    const claim = claims[t.id];
-    if (claim){ await drawCover(claim.img, x,y,w,h); }
-
-    // border
-    CTX.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  }
-}
-
-async function drawCover(src, x,y,w,h){
+async function drawCover(src, name, x,y,w,h){
+  // КАРТИНКА строго в границах плитки (clip)
+  CTX.save();
+  CTX.beginPath(); CTX.rect(x,y,w,h); CTX.clip(); // строгая обрезка
   try{
     const im = await loadImg(src);
     const r = Math.max(w/im.width, h/im.height);
@@ -264,38 +266,102 @@ async function drawCover(src, x,y,w,h){
     CTX.fillStyle="#fff"; CTX.fillRect(x,y,w,h);
     CTX.drawImage(im, ix, iy, iw, ih);
   }catch(e){
-    CTX.fillStyle="#f5e6a8"; CTX.fillRect(x,y,w,h);
+    // fallback — генерим аватар с инициалами
+    const av = new Image();
+    av.onload = ()=>{ CTX.drawImage(av,x,y,w,h); CTX.restore(); };
+    av.src = initialsAvatar(name||'Member', Math.max(200,w), Math.max(200,h));
+    CTX.fillStyle="#fff"; CTX.fillRect(x,y,w,h);
+    CTX.restore();
+    return;
+  }
+  CTX.restore();
+}
+
+function draw(){
+  CTX.setTransform(1,0,0,1,0,0);
+  CTX.fillStyle="#fff"; CTX.fillRect(0,0,W,H);
+  const ox = (W - WORLD.size*SCALE)/2;
+  const oy = (H - WORLD.size*SCALE)/2;
+
+  // границы плиток
+  CTX.lineWidth = Math.max(1, 0.8*DPR);
+  CTX.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--outline').trim() || '#cfd6e3';
+
+  // сначала рисунок/фото, затем границы
+  for (const t of tiles){
+    const x = Math.floor(ox + t.x*SCALE);
+    const y = Math.floor(oy + t.y*SCALE);
+    const w = Math.ceil(t.w*SCALE);
+    const h = Math.ceil(t.h*SCALE);
+    const claim = claims[t.id];
+    if (claim){ pending = pending.then(()=>drawCover(claim.img, claim.name, x,y,w,h)); }
+  }
+  // рамки
+  for (const t of tiles){
+    const x = Math.floor(ox + t.x*SCALE);
+    const y = Math.floor(oy + t.y*SCALE);
+    const w = Math.ceil(t.w*SCALE);
+    const h = Math.ceil(t.h*SCALE);
+    CTX.strokeRect(x+0.5,y+0.5,w-1,h-1);
+  }
+  // hover-подсветка
+  if (hoverId!=null){
+    const t = tiles.find(z=>z.id===hoverId);
+    if (t){
+      const x = Math.floor(ox + t.x*SCALE);
+      const y = Math.floor(oy + t.y*SCALE);
+      const w = Math.ceil(t.w*SCALE);
+      const h = Math.ceil(t.h*SCALE);
+      CTX.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--hover') || 'rgba(0,0,0,.08)';
+      CTX.fillRect(x,y,w,h);
+    }
   }
 }
 
-/* ===================== Hit testing ===================== */
-function screenToWorld(px,py){
-  const offsetX = (W - WORLD.size*SCALE)/2;
-  const offsetY = (H - WORLD.size*SCALE)/2;
-  const wx = (px*DPR - offsetX) / SCALE;
-  const wy = (py*DPR - offsetY) / SCALE;
-  return [wx,wy];
-}
+let pending = Promise.resolve();
+
+/* =================== HIT TEST + HOVER =================== */
 function pickTile(px,py){
-  const [wx,wy] = screenToWorld(px,py);
+  const rect = CAN.getBoundingClientRect();
+  const sx = (px-rect.left)*DPR, sy=(py-rect.top)*DPR;
+  const ox = (W - WORLD.size*SCALE)/2;
+  const oy = (H - WORLD.size*SCALE)/2;
+  const wx = (sx - ox)/SCALE, wy=(sy - oy)/SCALE;
   if (wx<0||wy<0||wx>WORLD.size||wy>WORLD.size) return null;
-  // 3k тайлов — линейный поиск быстрый
   for (let i=tiles.length-1;i>=0;i--){
     const t=tiles[i];
     if (wx>=t.x && wy>=t.y && wx<=t.x+t.w && wy<=t.y+t.h) return t;
   }
   return null;
 }
+
+CAN.addEventListener('mousemove', e=>{
+  const t = pickTile(e.clientX,e.clientY);
+  const id = t ? t.id : null;
+  if (id!==hoverId){ hoverId=id; draw(); }
+  CAN.style.cursor = t ? 'pointer' : 'default';
+});
+CAN.addEventListener('mouseleave', ()=>{ hoverId=null; draw(); });
+
 CAN.addEventListener('click', e=>{
-  const rect = CAN.getBoundingClientRect();
-  const t = pickTile(e.clientX-rect.left, e.clientY-rect.top);
-  if (!t) return;
+  const t = pickTile(e.clientX,e.clientY); if(!t) return;
   const claim = claims[t.id];
-  if (claim) openView(claim);
-  else openAdd(t);
+  if (claim) openView(claim); else openAdd(t);
 });
 
-/* ===================== Modals ===================== */
+/* =================== ZOOM (без сдвига) =================== */
+document.getElementById('stage').addEventListener('wheel', e=>{
+  e.preventDefault();
+  const factor = e.deltaY<0 ? 1.12 : 1/1.12;
+  setZoom(factor);
+},{passive:false});
+
+window.addEventListener('keydown', e=>{
+  if (e.key==='+' || e.key==='=' ) setZoom(1.12);
+  if (e.key==='-' || e.key==='_') setZoom(1/1.12);
+});
+
+/* =================== MODALS =================== */
 const viewOverlay = document.getElementById('viewOverlay');
 const viewImg = document.getElementById('viewImg');
 const viewTitle = document.getElementById('viewTitle');
@@ -316,7 +382,8 @@ let addRect = null;
 function openView(rec){
   viewTitle.textContent = rec.name || "Member of the Golden Million";
   viewSub.textContent = rec.desc || "“A short line for history.”";
-  viewImg.src = rec.img; viewOverlay.classList.add('on');
+  viewImg.src = rec.img;
+  viewOverlay.classList.add('on');
 }
 function openAdd(t){
   addRect = t;
@@ -344,7 +411,7 @@ addOverlay.addEventListener('click',e=>{ if(e.target===addOverlay) addOverlay.cl
 addSave.onclick = async ()=>{
   if (!addRect) return;
   if (!preview.src) return alert("Please add an image first.");
-  // compress to WebP; target based on tile short side (in world cells)
+  // сжимаем под короткую сторону плитки
   const shortSide = Math.min(addRect.w, addRect.h);
   const img = await downscaleToWebP(preview.src, Math.max(240, Math.round(shortSide*0.9)));
   claims[addRect.id] = { img, name:"Golden Million Member", desc:(desc.value||"I was here.").slice(0,80) };
@@ -353,7 +420,7 @@ addSave.onclick = async ()=>{
   draw();
 };
 
-/* Compress to WebP safely (prevents quota errors) */
+/* ========= Utils: compress to WebP (quota-safe) ========= */
 function loadImgBlob(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
 async function downscaleToWebP(dataURL, targetShort){
   const im = await loadImgBlob(dataURL);
@@ -369,8 +436,8 @@ async function downscaleToWebP(dataURL, targetShort){
   return out;
 }
 
-/* ===================== GO ===================== */
-resize(); // initial draw
+/* =================== BOOT =================== */
+resize(); // first draw
 </script>
 </body>
 </html>
