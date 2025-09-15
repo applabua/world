@@ -2,268 +2,425 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Million Mosaic — Plain</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GOLDEN MILLION — Get In. Be Remembered.</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <style>
-  /* Page: pure white, no UI */
-  html, body { margin:0; padding:0; height:100%; background:#fff; }
-  #field { display:block; width:100vw; height:100vh; cursor:crosshair; }
-
-  /* Modal (minimal) */
-  .overlay {
-    position:fixed; inset:0; background:rgba(0,0,0,0.4);
-    display:none; align-items:center; justify-content:center;
+  :root{
+    --bg:#ffffff; --ink:#111; --muted:#6b7280; --gold:#cda434; --gold2:#f4d36f;
+    --line:#e5e7eb; --accent:#111; --overlay:rgba(0,0,0,.45);
   }
-  .overlay.on { display:flex; }
-  .modal {
-    width:min(560px, 92vw); background:#fff; border:1px solid #ddd; border-radius:12px;
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  /* Header CTA */
+  header{
+    position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:center; justify-content:center;
+    padding:8px 12px; pointer-events:none;
+  }
+  .cta{
+    pointer-events:auto; display:inline-flex; align-items:center; gap:10px;
+    background:rgba(255,255,255,.96); border:1px solid var(--line); border-radius:999px;
+    padding:8px 14px; box-shadow:0 4px 20px rgba(0,0,0,.06);
+  }
+  .dot{width:10px;height:10px;border-radius:50%;background:conic-gradient(from 0deg, var(--gold), var(--gold2))}
+  .cta b{font-weight:700}
+  .cta span{color:var(--muted)}
+  /* Canvas field */
+  #field{position:fixed; inset:0; display:block; cursor:crosshair}
+  /* Modal */
+  .overlay{position:fixed; inset:0; background:var(--overlay); display:none; align-items:center; justify-content:center; z-index:50}
+  .overlay.on{display:flex}
+  .card{
+    width:min(680px,92vw); background:#fff; border:1px solid var(--line); border-radius:16px;
     box-shadow:0 10px 40px rgba(0,0,0,.25); padding:16px;
-    font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#111;
+    animation:pop .26s ease-out both;
   }
-  .modal h2 { margin:0 0 8px 0; font-size:18px; }
-  .modal .price { margin:0 0 12px 0; color:#444; }
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-  .drop {
-    width:100%; min-height:120px; border:1px dashed #bbb; border-radius:10px;
-    display:flex; align-items:center; justify-content:center; padding:10px; color:#666;
+  @keyframes pop{ from{ transform:scale(.96); opacity:0 } to{ transform:scale(1); opacity:1 } }
+  .title{margin:0 0 6px 0; font-weight:800; letter-spacing:.3px}
+  .sub{margin:0 0 12px 0; color:var(--muted)}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .col{flex:1 1 260px}
+  .drop{
+    min-height:140px; border:1px dashed #cfd3da; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#666;
+    padding:10px; text-align:center; background:#fafafa; cursor:pointer;
   }
-  .thumb { max-width:100%; max-height:200px; margin-top:8px; border-radius:8px; border:1px solid #eee; }
-  .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
-  .btn {
-    appearance:none; border:1px solid #ccc; background:#fff; color:#111; padding:8px 12px;
-    border-radius:10px; cursor:pointer;
+  .thumb{max-width:100%; max-height:340px; border-radius:12px; border:1px solid var(--line); display:block}
+  .input{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:#111}
+  .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
+  .btn{appearance:none; border:1px solid var(--line); background:#fff; color:#111; padding:8px 12px; border-radius:10px; cursor:pointer}
+  .btn.primary{border-color:#111; background:#111; color:#fff}
+  .gold{background:linear-gradient(180deg,#ffefb7,#f5d775); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:900}
+  /* Tooltip price bubble (subtle, on hover) */
+  .bubble{
+    position:fixed; z-index:40; transform:translate(-50%,-120%); pointer-events:none;
+    background:#fff; border:1px solid var(--line); border-radius:8px; padding:4px 8px; font-size:12px; color:#333; display:none;
+    box-shadow:0 8px 22px rgba(0,0,0,.08);
   }
-  .btn.primary { background:#111; color:#fff; border-color:#111; }
-  .mini { font-size:12px; color:#666; }
-  a.pay { text-decoration:none; }
 </style>
 </head>
 <body>
+<header>
+  <div class="cta">
+    <div class="dot"></div>
+    <b>GOLDEN MILLION</b>
+    <span>Get in now — be remembered beside legends.</span>
+  </div>
+</header>
 
 <canvas id="field"></canvas>
+<div class="bubble" id="bubble">$1 / 1 year</div>
 
-<!-- Minimal modal -->
-<div class="overlay" id="overlay">
-  <div class="modal" role="dialog" aria-modal="true">
-    <h2 id="mTitle">Cell</h2>
-    <p class="price" id="mPrice">$ — / 1 year</p>
-
-    <div class="row">
-      <div class="drop" id="drop">
-        <input type="file" id="file" accept="image/*" style="display:none">
-        <span id="dropText">Drop your ad image here (or click)</span>
-      </div>
-      <img id="preview" class="thumb" alt="" style="display:none">
-    </div>
-
+<!-- MODAL: occupied cell (legend or claimed) -->
+<div class="overlay" id="viewOverlay">
+  <div class="card">
+    <h3 class="title" id="viewTitle">Legend</h3>
+    <p class="sub" id="viewSub">“A short line for history.”</p>
+    <img id="viewImg" class="thumb" alt="">
     <div class="actions">
-      <button class="btn" id="closeBtn">Close</button>
-      <a class="btn primary pay" id="payBtn" href="#" target="_blank" rel="noopener">Pay</a>
+      <button class="btn" id="viewClose">Close</button>
     </div>
-    <div class="mini">Payment link is a placeholder. Integration will be added later.</div>
+  </div>
+</div>
+
+<!-- MODAL: free cell (add yourself) -->
+<div class="overlay" id="addOverlay">
+  <div class="card">
+    <h3 class="title">Claim your spot — $1 / year (test mode, no payment yet)</h3>
+    <p class="sub">Add your image and a short line about yourself. This demo saves only in your browser.</p>
+    <div class="row">
+      <div class="col">
+        <div class="drop" id="drop">
+          <input type="file" id="file" accept="image/*" style="display:none">
+          <span id="dropText">Drop an image here (or click)</span>
+        </div>
+        <img id="preview" class="thumb" alt="" style="display:none; margin-top:8px;">
+      </div>
+      <div class="col">
+        <label class="sub" for="desc">Your short line (max 80 chars)</label>
+        <input class="input" id="desc" maxlength="80" placeholder="I was here. 2025.">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="addCancel">Cancel</button>
+      <button class="btn primary" id="addSave">Save (test)</button>
+    </div>
   </div>
 </div>
 
 <script>
-/* ====== Config (you can change) ====== */
-const CELL_COUNT = 1000;          // number of cells
-const WORLD_W = 4000, WORLD_H = 2600;  // virtual world size (bigger = finer mosaic)
-const LINE_COLOR = '#d8d8d8';     // borders (light gray)
-const LINE_WIDTH = 1;
+/* =========================================================
+   GOLDEN MILLION — single-file demo (no backend, no payment)
+   - Virtual grid: 1000 × 1000 = 1,000,000 slots
+   - Lightweight canvas rendering (only visible cells drawn)
+   - 100 prefilled legends (no Putin) with SVG portrait placeholders
+   - Click occupied: smooth modal preview
+   - Click free: add your image + short line (localStorage only)
+   ========================================================= */
 
-/* ====== Utilities ====== */
-const rnd = (a=0, b=1) => a + Math.random()*(b-a);
-function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-function mix(a, b, t){ return a + (b-a)*t; }
+/* ---------- Canvas & world ---------- */
+const CAN = document.getElementById('field');
+const CTX = CAN.getContext('2d', { alpha:false });
+let DPR = Math.max(1, window.devicePixelRatio || 1);
 
-/* ====== Treemap-like random split to 1000 rectangles ====== */
-function makeRect(x,y,w,h){ return {x,y,w,h, area:w*h}; }
-function splitRect(r){
-  // choose orientation: prefer splitting along larger dimension
-  const horizBias = (r.w > r.h) ? 0.8 : 0.2;
-  const horiz = Math.random() < horizBias;
+const GRID = { cols:1000, rows:1000, size:12 }; // size in world units per cell (square)
+const WORLD = { w: GRID.cols*GRID.size, h: GRID.rows*GRID.size };
+let W=0, H=0, scale=0.3, offX=0, offY=0;
 
-  if (horiz) {
-    const cut = clamp(Math.round(r.w * rnd(0.35, 0.65)), 6, r.w-6);
-    const a = makeRect(r.x, r.y, cut, r.h);
-    const b = makeRect(r.x + cut, r.y, r.w - cut, r.h);
-    return [a,b];
-  } else {
-    const cut = clamp(Math.round(r.h * rnd(0.35, 0.65)), 6, r.h-6);
-    const a = makeRect(r.x, r.y, r.w, cut);
-    const b = makeRect(r.x, r.y + cut, r.w, r.h - cut);
-    return [a,b];
-  }
+function fit(){
+  W = CAN.width = Math.floor(window.innerWidth * DPR);
+  H = CAN.height = Math.floor(window.innerHeight * DPR);
+  CAN.style.width = window.innerWidth+'px';
+  CAN.style.height = window.innerHeight+'px';
+  // Fit whole world initially
+  const s = Math.min(W/WORLD.w, H/WORLD.h);
+  if (!fit._done){ scale = s; offX = (W - WORLD.w*s)/2; offY = (H - WORLD.h*s)/2; fit._done = true; }
+  draw();
+}
+window.addEventListener('resize', fit);
+
+/* ---------- Helpers ---------- */
+function worldToScreen(wx, wy){ return [ (wx*scale + offX), (wy*scale + offY) ]; }
+function screenToWorld(sx, sy){ return [ (sx - offX)/scale, (sy - offY)/scale ]; }
+function cellToWorld(x,y){ return [ x*GRID.size, y*GRID.size ]; }
+function worldToCell(wx,wy){ return [ Math.floor(wx/GRID.size), Math.floor(wy/GRID.size) ]; }
+function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+
+/* ---------- Legends (100 prefilled) ---------- */
+const LEGEND_NAMES = [
+  "Abraham Lincoln","Nelson Mandela","Mahatma Gandhi","Martin Luther King Jr.","Winston Churchill",
+  "Volodymyr Zelenskyy","George Washington","Napoleon Bonaparte","Julius Caesar","Cleopatra",
+  "Leonardo da Vinci","Michelangelo","Vincent van Gogh","Pablo Picasso","Frida Kahlo",
+  "Albert Einstein","Isaac Newton","Galileo Galilei","Nikola Tesla","Marie Curie",
+  "Ada Lovelace","Alan Turing","Grace Hopper","Katherine Johnson","Hedy Lamarr",
+  "Charles Darwin","Carl Sagan","Richard Feynman","Johannes Kepler","Niels Bohr",
+  "William Shakespeare","Homer","Dante Alighieri","Johann S. Bach","Ludwig van Beethoven",
+  "Wolfgang A. Mozart","Leo Tolstoy","Fyodor Dostoevsky","Ernest Hemingway","Agatha Christie",
+  "Elon Musk","Steve Jobs","Bill Gates","Jeff Bezos","Warren Buffett",
+  "Mark Zuckerberg","Jack Ma","Oprah Winfrey","Malala Yousafzai","Greta Thunberg",
+  "Serena Williams","Michael Jordan","Kobe Bryant","Lionel Messi","Cristiano Ronaldo",
+  "Pelé","Usain Bolt","Bruce Lee","Jackie Chan","Hayao Miyazaki",
+  "Akira Kurosawa","Steven Spielberg","George Lucas","Quentin Tarantino","James Cameron",
+  "Mother Teresa","Florence Nightingale","Yayoi Kusama","Banksy","Salvador Dalí",
+  "Socrates","Plato","Aristotle","Confucius","Sun Tzu",
+  "Genghis Khan","Alexander the Great","Queen Elizabeth II","Joan of Arc","Catherine the Great",
+  "Sheryl Sandberg","Satya Nadella","Sundar Pichai","Tim Cook","Susan Wojcicki",
+  "Barack Obama","Donald Trump","Joe Biden","Angela Merkel","Emmanuel Macron",
+  "Desmond Tutu","Aung San Suu Kyi","Lech Wałęsa","Vaclav Havel","Nelson Piquet",
+  "Stephen Hawking","Jane Goodall","Neil Armstrong","Yuri Gagarin","Amelia Earhart",
+  "Tolkien","George R. R. Martin","J.K. Rowling","Haruki Murakami","Gabriel García Márquez"
+]; // 100 items, no Putin
+
+function svgPortrait(name){
+  const initials = name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const esc = s=>encodeURIComponent(s);
+  const svg =
+`<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'>
+  <defs>
+    <linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
+      <stop offset='0%' stop-color='#f9e9a3'/>
+      <stop offset='50%' stop-color='#f0d16a'/>
+      <stop offset='100%' stop-color='#cda434'/>
+    </linearGradient>
+  </defs>
+  <rect width='100%' height='100%' fill='url(#g)'/>
+  <circle cx='300' cy='250' r='140' fill='rgba(255,255,255,.25)'/>
+  <text x='300' y='285' font-family='system-ui,Arial' font-size='120' text-anchor='middle' fill='#222' font-weight='800'>${initials}</text>
+  <text x='300' y='520' font-family='system-ui,Arial' font-size='34' text-anchor='middle' fill='#222' font-weight='700'>${name.replace(/&/g,"&amp;")}</text>
+</svg>`;
+  return "data:image/svg+xml;utf8," + esc(svg);
 }
 
-function buildLayout(count){
-  const list = [ makeRect(0,0, WORLD_W, WORLD_H) ];
-  // Always split the largest area rectangle that can still split
-  while (list.length < count) {
-    // find largest that can split
-    let idx = -1, bestArea = -1;
-    for (let i=0;i<list.length;i++){
-      const r = list[i];
-      if (r.w > 12 || r.h > 12) { // splittable threshold
-        if (r.area > bestArea){ bestArea = r.area; idx = i; }
+/* Random non-overlapping positions for 100 legends across 1000×1000 */
+const legendMap = new Map(); // "x_y" -> {name, img, desc}
+(function placeLegends(){
+  const taken = new Set();
+  let tries=0, placed=0;
+  const pad=20; // keep away from each other (in cells)
+  while (placed < LEGEND_NAMES.length && tries < 50000){
+    tries++;
+    const x = Math.floor(Math.random()*GRID.cols);
+    const y = Math.floor(Math.random()*GRID.rows);
+    const key = x+"_"+y";
+    if (taken.has(key)) continue;
+    // proximity check
+    let ok = true;
+    for (let dy=-pad; dy<=pad; dy+=pad){
+      for (let dx=-pad; dx<=pad; dx+=pad){
+        const k2 = (x+dx)+"_"+(y+dy);
+        if (taken.has(k2)) { ok=false; break; }
+      }
+      if (!ok) break;
+    }
+    if (!ok) continue;
+    const name = LEGEND_NAMES[placed];
+    legendMap.set(key, {
+      name,
+      img: svgPortrait(name),
+      desc: "Part of the Golden Million."
+    });
+    taken.add(key); placed++;
+  }
+})();
+
+/* ---------- Local claims (test-mode) ---------- */
+const LS_KEY = "golden_million_claims_v1";
+let claims = {};
+try{ claims = JSON.parse(localStorage.getItem(LS_KEY)||"{}"); }catch(e){ claims = {}; }
+
+/* ---------- Render only visible cells ---------- */
+function draw(){
+  CTX.setTransform(1,0,0,1,0,0);
+  CTX.fillStyle="#fff"; CTX.fillRect(0,0,W,H);
+
+  // Visible world rect
+  const [wx0, wy0] = screenToWorld(0,0);
+  const [wx1, wy1] = screenToWorld(W, H);
+  const cx0 = clamp(Math.floor(wx0/GRID.size)-2, 0, GRID.cols-1);
+  const cy0 = clamp(Math.floor(wy0/GRID.size)-2, 0, GRID.rows-1);
+  const cx1 = clamp(Math.floor(wx1/GRID.size)+2, 0, GRID.cols-1);
+  const cy1 = clamp(Math.floor(wy1/GRID.size)+2, 0, GRID.rows-1);
+
+  // Grid lines only if zoomed enough
+  if (scale*GRID.size > 2){
+    CTX.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line').trim() || '#e5e7eb';
+    CTX.lineWidth = Math.max(1, 0.5*DPR);
+    CTX.beginPath();
+    for (let y=cy0; y<=cy1; y++){
+      const [sx0, sy] = worldToScreen(cx0*GRID.size, y*GRID.size);
+      const [sx1, ]  = worldToScreen((cx1+1)*GRID.size, y*GRID.size);
+      CTX.moveTo(sx0, sy); CTX.lineTo(sx1, sy);
+    }
+    for (let x=cx0; x<=cx1; x++){
+      const [sx, sy0] = worldToScreen(x*GRID.size, cy0*GRID.size);
+      const [, sy1]   = worldToScreen(x*GRID.size, (cy1+1)*GRID.size);
+      CTX.moveTo(sx, sy0); CTX.lineTo(sx, sy1);
+    }
+    CTX.stroke();
+  }
+
+  // Draw occupied thumbnails (legends + local claims) if zoomed enough
+  if (scale*GRID.size > 10){
+    const pad = 1;
+    for (let y=cy0; y<=cy1; y++){
+      for (let x=cx0; x<=cx1; x++){
+        const key = x+"_"+y;
+        const claim = claims[key];
+        const legend = legendMap.get(key);
+        const rec = claim || legend;
+        if (!rec) continue;
+        const [sx, sy] = worldToScreen(x*GRID.size, y*GRID.size);
+        const s = GRID.size*scale;
+        drawThumb(rec.img, sx+pad, sy+pad, s-2*pad, s-2*pad);
       }
     }
-    if (idx === -1) break; // cannot reach exact count, but with thresholds it should
-    const r = list.splice(idx,1)[0];
-    const [a,b] = splitRect(r);
-    list.push(a,b);
-  }
-  // Recompute ids
-  list.forEach((r,i)=> r.id = i);
-  return list;
-}
-
-/* ====== Pricing: map area -> $1..$10,000 (log-ish + randomness) ====== */
-function assignPrices(cells){
-  let maxA = 0; for (const r of cells) maxA = Math.max(maxA, r.area);
-  for (const r of cells){
-    const norm = r.area / maxA; // 0..1
-    // bias: more area -> higher price, but add randomness to avoid strict ordering
-    const jitter = Math.pow(Math.random(), 2); // 0..1, skewed to lower
-    const base = clamp(0.25*norm + 0.75*jitter, 0, 1);
-    let price = Math.round( 1 + Math.pow(base, 1.2) * (10000 - 1) );
-    price = clamp(price, 1, 10000);
-    r.price = price;
   }
 }
 
-/* ====== Rendering & hit-testing ====== */
-const canvas = document.getElementById('field');
-const ctx = canvas.getContext('2d');
-
-let DPR = Math.max(1, window.devicePixelRatio || 1);
-let W = 0, H = 0;
-let layout = buildLayout(CELL_COUNT);
-assignPrices(layout);
-
-function fitViewport(){
-  W = Math.floor(window.innerWidth * DPR);
-  H = Math.floor(window.innerHeight * DPR);
-  canvas.width = W; canvas.height = H;
-  canvas.style.width = window.innerWidth + 'px';
-  canvas.style.height = window.innerHeight + 'px';
+/* Image cache for thumbnails */
+const imgCache = new Map();
+function loadImg(src){
+  if (imgCache.has(src)) return imgCache.get(src);
+  const p = new Promise((res, rej)=>{
+    const im = new Image(); im.crossOrigin="anonymous";
+    im.onload = ()=>res(im); im.onerror = rej; im.src = src;
+  });
+  imgCache.set(src,p); return p;
 }
-function draw(){
-  ctx.save();
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,W,H);
-  // compute scale to fit world entirely
-  const scale = Math.min(W / WORLD_W, H / WORLD_H);
-  const ox = (W - WORLD_W*scale)/2;
-  const oy = (H - WORLD_H*scale)/2;
+async function drawThumb(src, x,y,w,h){
+  try{
+    const im = await loadImg(src);
+    // cover center-crop
+    const ratio = Math.max(w/im.width, h/im.height);
+    const iw = im.width*ratio, ih = im.height*ratio;
+    const ix = x + (w - iw)/2, iy = y + (h - ih)/2;
+    CTX.fillStyle="#fff"; CTX.fillRect(x,y,w,h);
+    CTX.drawImage(im, ix, iy, iw, ih);
+  }catch(e){ /* ignore */ }
+}
 
-  ctx.lineWidth = Math.max(1, LINE_WIDTH * DPR);
-  ctx.strokeStyle = LINE_COLOR;
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0,0,W,H); // pure white background
+/* ---------- Interactions (pan/zoom/click/hover) ---------- */
+let dragging=false, sx=0, sy=0, ox=0, oy=0;
 
-  // Draw borders only (no text, no fills per cell)
-  ctx.save();
-  ctx.translate(ox, oy);
-  ctx.scale(scale, scale);
-  for (const r of layout){
-    ctx.beginPath();
-    ctx.rect(r.x, r.y, r.w, r.h);
-    ctx.stroke();
+CAN.addEventListener('mousedown',(e)=>{ dragging=true; sx=e.clientX; sy=e.clientY; ox=offX; oy=offY; });
+window.addEventListener('mouseup',()=> dragging=false);
+window.addEventListener('mousemove',(e)=>{
+  if (dragging){ offX = ox + (e.clientX - sx)*DPR; offY = oy + (e.clientY - sy)*DPR; draw(); }
+});
+CAN.addEventListener('wheel',(e)=>{
+  e.preventDefault();
+  const delta = Math.sign(e.deltaY) * -0.08;
+  const old = scale;
+  const rect = CAN.getBoundingClientRect();
+  const cx = (e.clientX - rect.left) * DPR, cy = (e.clientY - rect.top) * DPR;
+  const [wx, wy] = screenToWorld(cx, cy);
+  scale = clamp(scale + delta, 0.08, 3);
+  offX = cx - wx*scale; offY = cy - wy*scale;
+  draw();
+},{passive:false});
+
+const bubble = document.getElementById('bubble');
+CAN.addEventListener('mousemove',(e)=>{
+  const rect = CAN.getBoundingClientRect();
+  const [wx, wy] = screenToWorld((e.clientX-rect.left)*DPR, (e.clientY-rect.top)*DPR);
+  const [cx, cy] = [clamp(Math.floor(wx/GRID.size),0,GRID.cols-1), clamp(Math.floor(wy/GRID.size),0,GRID.rows-1)];
+  const [sx1, sy1] = worldToScreen(cx*GRID.size, cy*GRID.size);
+  const s = GRID.size*scale;
+  if (s > 10){ // show subtle bubble when zoomed
+    bubble.style.display='block';
+    bubble.style.left = (sx1 + s/2)/DPR + 'px';
+    bubble.style.top  = (sy1)/DPR + 'px';
+  } else {
+    bubble.style.display='none';
   }
-  ctx.restore();
-  ctx.restore();
+});
+CAN.addEventListener('mouseleave',()=> bubble.style.display='none');
 
-  // store transform for hit tests
-  draw._scale = scale; draw._ox = ox; draw._oy = oy;
-}
-window.addEventListener('resize', ()=>{ fitViewport(); draw(); });
-fitViewport(); draw();
+/* Click handling */
+CAN.addEventListener('click',(e)=>{
+  const rect = CAN.getBoundingClientRect();
+  const [wx, wy] = screenToWorld((e.clientX-rect.left)*DPR, (e.clientY-rect.top)*DPR);
+  const x = clamp(Math.floor(wx/GRID.size),0,GRID.cols-1);
+  const y = clamp(Math.floor(wy/GRID.size),0,GRID.rows-1);
+  openCell(x,y);
+});
 
-/* Point in rect in world coords */
-function hitTest(clientX, clientY){
-  const sx = clientX * DPR, sy = clientY * DPR;
-  const worldX = (sx - draw._ox) / draw._scale;
-  const worldY = (sy - draw._oy) / draw._scale;
-  if (worldX < 0 || worldY < 0 || worldX > WORLD_W || worldY > WORLD_H) return null;
-  // Since rectangles do not overlap, we can binary search if sorted. Simpler: linear scan (1000 ok).
-  for (let i=0;i<layout.length;i++){
-    const r = layout[i];
-    if (worldX >= r.x && worldX <= r.x + r.w && worldY >= r.y && worldY <= r.y + r.h) return r;
-  }
-  return null;
-}
+/* ---------- Cell modals ---------- */
+const viewOverlay = document.getElementById('viewOverlay');
+const viewImg = document.getElementById('viewImg');
+const viewTitle = document.getElementById('viewTitle');
+const viewSub = document.getElementById('viewSub');
+document.getElementById('viewClose').onclick = ()=> viewOverlay.classList.remove('on');
+viewOverlay.addEventListener('click', e=>{ if (e.target===viewOverlay) viewOverlay.classList.remove('on'); });
 
-/* ====== Modal logic ====== */
-const overlay = document.getElementById('overlay');
-const mTitle = document.getElementById('mTitle');
-const mPrice = document.getElementById('mPrice');
-const payBtn = document.getElementById('payBtn');
-const closeBtn = document.getElementById('closeBtn');
+const addOverlay = document.getElementById('addOverlay');
+const addCancel = document.getElementById('addCancel');
+const addSave = document.getElementById('addSave');
 const drop = document.getElementById('drop');
-const fileInput = document.getElementById('file');
+const file = document.getElementById('file');
 const preview = document.getElementById('preview');
 const dropText = document.getElementById('dropText');
+const desc = document.getElementById('desc');
 
-let currentCell = null;
+let currentKey = null;
 
-canvas.addEventListener('click', (e)=>{
-  const r = hitTest(e.clientX, e.clientY);
-  if (!r) return;
-  currentCell = r;
-  mTitle.textContent = `Cell #${r.id}`;
-  mPrice.textContent = `$${r.price} / 1 year`;
-  payBtn.href = `#pay-${r.id}-${r.price}`; // placeholder; integrate later
-  preview.style.display = 'none';
-  preview.src = '';
-  overlay.classList.add('on');
-});
+function openCell(x,y){
+  currentKey = x+"_"+y;
+  const rec = claims[currentKey] || legendMap.get(currentKey);
+  if (rec){
+    // occupied — view modal
+    viewTitle.textContent = rec.name || "Member of the Golden Million";
+    viewSub.textContent = rec.desc || "“A short line for history.”";
+    viewImg.src = rec.img;
+    viewOverlay.classList.add('on');
+  } else {
+    // free — add modal
+    preview.style.display='none'; preview.src='';
+    dropText.textContent = "Drop an image here (or click)";
+    desc.value = "";
+    addOverlay.classList.add('on');
+  }
+}
+addCancel.onclick = ()=> addOverlay.classList.remove('on');
+addOverlay.addEventListener('click', e=>{ if (e.target===addOverlay) addOverlay.classList.remove('on'); });
 
-closeBtn.addEventListener('click', ()=> overlay.classList.remove('on'));
-overlay.addEventListener('click', (e)=>{ if (e.target === overlay) overlay.classList.remove('on'); });
-document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') overlay.classList.remove('on'); });
-
-drop.addEventListener('click', ()=> fileInput.click());
-drop.addEventListener('dragover', (e)=>{ e.preventDefault(); drop.style.borderColor='#888'; });
-drop.addEventListener('dragleave', ()=>{ drop.style.borderColor='#bbb'; });
-drop.addEventListener('drop', (e)=>{
-  e.preventDefault();
-  drop.style.borderColor='#bbb';
+drop.addEventListener('click', ()=> file.click());
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor="#999"; });
+drop.addEventListener('dragleave', ()=>{ drop.style.borderColor="#cfd3da"; });
+drop.addEventListener('drop', e=>{
+  e.preventDefault(); drop.style.borderColor="#cfd3da";
   if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
-fileInput.addEventListener('change', (e)=>{
+file.addEventListener('change', e=>{
   if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
 });
-
-function handleFile(file){
-  if (!/^image\//.test(file.type)) { alert('Please choose an image file'); return; }
+function handleFile(f){
+  if (!/^image\//.test(f.type)) return alert("Please choose an image");
   const r = new FileReader();
-  r.onload = ()=> {
-    preview.src = r.result;
-    preview.style.display = 'block';
-    dropText.textContent = 'Image selected';
-  };
-  r.readAsDataURL(file);
+  r.onload = ()=>{ preview.src=r.result; preview.style.display='block'; dropText.textContent="Image selected"; };
+  r.readAsDataURL(f);
 }
 
-/* Optional: hover highlight (subtle) — no text */
-(function enableHover(){
-  let lastIdx = -1;
-  canvas.addEventListener('mousemove', (e)=>{
-    const r = hitTest(e.clientX, e.clientY);
-    if (!r){ if (lastIdx !== -1){ draw(); lastIdx=-1; } return; }
-    if (r.id === lastIdx) return;
-    lastIdx = r.id;
-    draw();
-    // draw subtle highlight
-    ctx.save();
-    const scale = draw._scale, ox = draw._ox, oy = draw._oy;
-    ctx.translate(ox, oy); ctx.scale(scale, scale);
-    ctx.fillStyle = 'rgba(0,0,0,0.03)'; // very subtle
-    ctx.fillRect(r.x, r.y, r.w, r.h);
-    ctx.restore();
-  });
-})();
+addSave.onclick = ()=>{
+  if (!preview.src) return alert("Please add an image first.");
+  const text = desc.value.trim().slice(0,80) || "I was here.";
+  claims[currentKey] = { img: preview.src, name: "Golden Million Member", desc: text };
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(claims)); }catch(e){}
+  addOverlay.classList.remove('on');
+  draw();
+};
+
+/* ---------- Init ---------- */
+fit(); draw();
+
+/* =========================================================
+   NOTE (for later payment wiring):
+   - Price: fixed $1 per slot per 1 year.
+   - Real flow: click free → upload + tagline → "Pay $1" →
+                payment provider (Payment Link/Stripe Checkout) →
+                webhook marks slot paid + stores image & text.
+   - For production: store claimed slots in database (key = "x_y"),
+                     serve thumbnails via CDN, enforce 1 slot per tx,
+                     and add moderation for content.
+   ========================================================= */
 </script>
 </body>
 </html>
